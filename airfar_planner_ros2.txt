@@ -1,0 +1,30 @@
+终端 1：启动仿真环境，使用下载的 ROS1 示例 Gazebo 模型和 office.world
+  cd /home/wenxuan/Air-FAR_humble_codex
+  source /opt/ros/humble/setup.bash
+  source /home/wenxuan/far_planner/install/setup.bash
+
+  export GAZEBO_MODEL_PATH=/home/wenxuan/Air-FAR_humble_codex/external/
+  aerial_autonomy_development_environment/src/vehicle_simulator/mesh:
+  $GAZEBO_MODEL_PATH
+
+  ros2 launch vehicle_simulator system_indoor.launch \
+    world:=/home/wenxuan/Air-FAR_humble_codex/external/
+  aerial_autonomy_development_environment/src/vehicle_simulator/world/
+  office.world \
+    gazebo_gui:=true
+    
+    
+cd /home/wenxuan/Air-FAR_humble_codex
+  source /opt/ros/humble/setup.bash
+  source /home/wenxuan/far_planner/install/setup.bash
+  source install/setup.bash
+
+  ros2 launch airfar_planner airfar.launch.py use_rviz:=true
+
+  终端 3：发送一个测试目标点
+  ros2 topic pub --once /goal geometry_msgs/msg/PointStamped \
+  "{header: {frame_id: map}, point: {x: 8.0, y: 0.0, z: 1.0}}"
+
+按照流程进行操作有问题：
+1.image并没有图像，
+2.gazebo没有启动且rviz中没有障碍物显示也不会进行构图
