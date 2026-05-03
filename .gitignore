@@ -6,6 +6,7 @@ log/
 # Local reference archives and extracted upstream snapshots
 Air-FAR-noetic/
 far_planner-humble-jazzy/
+external/
 *.zip
 Git/
 Git-*-64-bit.exe

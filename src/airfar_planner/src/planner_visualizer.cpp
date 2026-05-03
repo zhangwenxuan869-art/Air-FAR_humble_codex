@@ -420,7 +420,7 @@ void DPVisualizer::SetMarker(const VizColor& color,
                              const float& scale_ratio) 
 {
     scan_marker.header.frame_id = DPUtil::worldFrameId;
-    scan_marker.header.stamp = nh_->now();
+    scan_marker.header.stamp = rclcpp::Clock(RCL_ROS_TIME).now();
     scan_marker.id = 0;
     scan_marker.ns = ns;
     scan_marker.action = Marker::ADD;
@@ -483,5 +483,4 @@ void DPVisualizer::SetColor(const VizColor& color,
     }
     scan_marker.color = c;
 }
-
 
