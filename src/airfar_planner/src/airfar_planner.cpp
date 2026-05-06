@@ -13,6 +13,9 @@
 DPMaster::DPMaster()
 {
   nh_ = rclcpp::Node::make_shared("airfar_planner_node");
+  rclcpp::NodeOptions control_options;
+  control_options.use_global_arguments(false);
+  control_nh_ = rclcpp::Node::make_shared("airfar_planner_control_node", control_options);
   tf_buffer_ = std::make_shared<tf2_ros::Buffer>(nh_->get_clock());
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 }
@@ -29,14 +32,14 @@ static void DeclareAndGet(const rclcpp::Node::SharedPtr& nh,
 
 void DPMaster::Init() {
   /* initialize subscriber and publisher */
-  reset_graph_sub_   = nh_->create_subscription<std_msgs::msg::Empty>("/reset_visibility_graph", 5, std::bind(&DPMaster::ResetGraphCallBack, this, std::placeholders::_1));
+  reset_graph_sub_   = control_nh_->create_subscription<std_msgs::msg::Empty>("/reset_visibility_graph", 5, std::bind(&DPMaster::ResetGraphCallBack, this, std::placeholders::_1));
   odom_sub_          = nh_->create_subscription<nav_msgs::msg::Odometry>("/odom_world", 5, std::bind(&DPMaster::OdomCallBack, this, std::placeholders::_1));
   terrain_sub_       = nh_->create_subscription<sensor_msgs::msg::PointCloud2>("/terrain_cloud", 1, std::bind(&DPMaster::TerrainCallBack, this, std::placeholders::_1));
   scan_sub_          = nh_->create_subscription<sensor_msgs::msg::PointCloud2>("/scan_cloud", 5, std::bind(&DPMaster::ScanCallBack, this, std::placeholders::_1));
-  waypoint_sub_      = nh_->create_subscription<geometry_msgs::msg::PointStamped>("/goal", 1, std::bind(&DPMaster::WaypointCallBack, this, std::placeholders::_1));
-  goal_pose_sub_     = nh_->create_subscription<geometry_msgs::msg::PoseStamped>("/goal_pose", 1, std::bind(&DPMaster::GoalPoseCallBack, this, std::placeholders::_1));
+  waypoint_sub_      = control_nh_->create_subscription<geometry_msgs::msg::PointStamped>("/goal", 1, std::bind(&DPMaster::WaypointCallBack, this, std::placeholders::_1));
+  goal_pose_sub_     = control_nh_->create_subscription<geometry_msgs::msg::PoseStamped>("/goal_pose", 1, std::bind(&DPMaster::GoalPoseCallBack, this, std::placeholders::_1));
   terrain_local_sub_ = nh_->create_subscription<sensor_msgs::msg::PointCloud2>("/terrain_local_cloud", 1, std::bind(&DPMaster::TerrainLocalCallBack, this, std::placeholders::_1));
-  joy_command_sub_   = nh_->create_subscription<sensor_msgs::msg::Joy>("/joy", 5, std::bind(&DPMaster::JoyCommandCallBack, this, std::placeholders::_1));
+  joy_command_sub_   = control_nh_->create_subscription<sensor_msgs::msg::Joy>("/joy", 5, std::bind(&DPMaster::JoyCommandCallBack, this, std::placeholders::_1));
 
   goal_pub_ = nh_->create_publisher<geometry_msgs::msg::PointStamped>("/way_point",5);
 
@@ -100,10 +103,12 @@ void DPMaster::Init() {
   nav_heading_ = Point3D(0,0,0);
   nav_goal_    = Point3D(0,0,0);
   goal_waypoint_stamped_.header.frame_id = master_params_.world_frame;
-  const float duration_time = 1.0f / master_params_.main_run_freq;
-  main_event_ = nh_->create_wall_timer(std::chrono::milliseconds(int(duration_time * 1000.0f)), std::bind(&DPMaster::MainLoopCallBack, this));
   ROS_INFO_COND(master_params_.is_simulation, "********************************** SIMULATION PLANNING **********************************");
   ROS_INFO_COND(!master_params_.is_simulation, "********************************** REAL ROBOT PLANNING **********************************");
+}
+
+void DPMaster::RunOnce() {
+  this->MainLoopCallBack();
 }
 
 void DPMaster::ResetEnvironmentAndGraph() {
@@ -606,6 +611,8 @@ void DPMaster::ExtractDynamicObsFromScan(const PointCloudPtr& scanCloudIn,
 void DPMaster::WaypointCallBack(const geometry_msgs::msg::PointStamped::ConstSharedPtr msg) {
   Point3D goal_p(msg->point.x, msg->point.y, msg->point.z);
   const std::string goal_frame = msg->header.frame_id;
+  ROS_INFO("DPMaster: received goal in frame %s: %.2f, %.2f, %.2f",
+           goal_frame.c_str(), goal_p.x, goal_p.y, goal_p.z);
   if (!DPUtil::IsSameFrameID(goal_frame, master_params_.world_frame)) {
     ROS_WARN("DPMaster: waypoint published is not on world frame!");
     DPUtil::TransformPoint3DFrame(goal_frame, master_params_.world_frame, tf_buffer_, goal_p);
@@ -689,8 +696,13 @@ int main(int argc, char** argv){
   rclcpp::init(argc, argv);
   auto dp_node = std::make_shared<DPMaster>();
   dp_node->Init();
-  rclcpp::spin(dp_node->GetNode());
+  rclcpp::Rate rate(dp_node->MainRunFrequency());
+  while (rclcpp::ok()) {
+    rclcpp::spin_some(dp_node->GetControlNode());
+    rclcpp::spin_some(dp_node->GetNode());
+    dp_node->RunOnce();
+    rate.sleep();
+  }
   rclcpp::shutdown();
   return 0;
 }
-

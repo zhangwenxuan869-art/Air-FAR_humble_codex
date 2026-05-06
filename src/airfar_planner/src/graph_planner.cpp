@@ -266,10 +266,13 @@ bool GraphPlanner::NextGoalPlanning(PointStack& global_path,
                 is_free_nav_goal_ = false;
                 return true;
             }
-            ROS_ERROR("****************** FAIL TO REACH GOAL ******************");
-            this->GoalReset();
-            is_goal_init_ = false, _is_fails = true;
-            return false;
+            ROS_WARN("GP: no reachable nav node found, attempting direct goal navigation.");
+            global_path.push_back(odom_node_ptr_->position);
+            global_path.push_back(_goal_p);
+            global_path_ptr.push_back(odom_node_ptr_);
+            global_path_ptr.push_back(goal_node_ptr_);
+            _nav_goal = _goal_p;
+            return true;
         }
     }
     if (this->ReconstructPath(goal_node_ptr_, is_free_nav_goal_, global_path, global_path_ptr)) {
@@ -288,9 +291,13 @@ bool GraphPlanner::NextGoalPlanning(PointStack& global_path,
         this->RecordPathInfo(global_path);
         return true;
     }
-    this->GoalReset();
-    is_goal_init_ = false, _is_fails = true;
-    return false;
+    ROS_WARN("GP: reconstruct path failed, attempting direct goal navigation.");
+    global_path.push_back(odom_node_ptr_->position);
+    global_path.push_back(_goal_p);
+    global_path_ptr.push_back(odom_node_ptr_);
+    global_path_ptr.push_back(goal_node_ptr_);
+    _nav_goal = _goal_p;
+    return true;
 }
 
 bool GraphPlanner::ReconstructPath(const NavNodePtr& goal_node_ptr,
@@ -707,4 +714,3 @@ void GraphPlanner::UpdateConnectivityBetweenInsertNodes() {
 //     }
 //     DPUtil::Timer.end_time("Insert_Nodes_Connectivity_Check");
 // }
-

@@ -37,9 +37,13 @@ public:
 
     void Init(); // Node initialization
     rclcpp::Node::SharedPtr GetNode() { return nh_; }
+    rclcpp::Node::SharedPtr GetControlNode() { return control_nh_; }
+    void RunOnce();
+    float MainRunFrequency() const { return master_params_.main_run_freq; }
 
 private:
     rclcpp::Node::SharedPtr nh_;
+    rclcpp::Node::SharedPtr control_nh_;
     rclcpp::Subscription<std_msgs::msg::Empty>::SharedPtr reset_graph_sub_;
     rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_command_sub_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
