@@ -65,7 +65,7 @@ ros2 topic pub --once /goal geometry_msgs/msg/PointStamped \
 
 当前剩余问题：
 1. localPlanner 仍然没有生成有效局部路径。诊断日志显示 maxScore=0、selectedGroupID=-1，即候选路径评分阶段没有任何可选路径。
-2. 即使直接向 /way_point 发送近目标，并把 local_planner.launch 改为 useTerrainAnalysis=false、checkObstacle=false，/path 仍只有原点。这说明问题不再是 Gazebo、图像、点云或 Air-FAR 未接收目标，而是 localPlanner 路径库/评分逻辑与当前 office 场景、坐标系或路径参数之间不匹配。***
+2. 即使直接向 /way_point 发送近目标，并把 local_planner.launch 改为 useTerrainAnalysis=false、checkObstacle=false，/path 仍只有原点。这说明问题不再是 Gazebo、图像、点云或 Air-FAR 未接收目标，而是 localPlanner 路径库/评分逻辑与当前 office 场景、坐标系或路径参数之间不匹配。
 3. office preview pointcloud.ply 缺失，visualizationTools 会提示无法读取 /mesh/office/preview/pointcloud.ply。这影响 /overall_map 预览，不影响实时点云和 Air-FAR 构图。
 4. Gazebo 的 spawn_entity.py 在 office 重场景中偶尔会报 timeout，但实体和传感器插件仍可能已经加载并发布话题。
 5. Ctrl-C 关闭时多个 FAR 节点会抛 rclcpp::RCLError，sensorScanGeneration 有时需要 SIGKILL。这是关闭流程问题，不是图像/地图链路问题。
