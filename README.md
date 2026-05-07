@@ -71,7 +71,17 @@ ros2 launch vehicle_simulator system_indoor.launch \
   gazebo_gui:=true
 ```
 
-Terminal 2, start Air-FAR and its RViz config:
+Terminal 2, start Air-FAR and its RViz config.
+
+The current ROS2 Humble setup with `MichaelFYang/far_planner` simulation should
+use the ROS2 `far_planner`-style cloud remap:
+
+```text
+/scan_cloud -> /terrain_map
+/terrain_local_cloud -> /registered_scan
+```
+
+This is the default for `airfar.launch.py`:
 
 ```bash
 cd /path/to/Air-FAR_humble_codex
@@ -81,6 +91,24 @@ source install/setup.bash
 
 ros2 launch airfar_planner airfar.launch.py use_rviz:=true
 ```
+
+The equivalent explicit A/B launch command is:
+
+```bash
+ros2 launch airfar_planner airfar_ab_remap.launch.py remap_profile:=far_ros2 use_rviz:=true
+```
+
+The `airfar_ros1` remap profile is preserved as the original ROS1 Air-FAR-style
+comparison:
+
+```text
+/scan_cloud -> /registered_scan
+/terrain_local_cloud -> /terrain_map
+```
+
+In this ROS2 Humble simulation environment, that profile has been verified not
+to close the loop: `/path` remains only the origin or `/cmd_vel` stays at zero,
+so the UAV does not move.
 
 Terminal 3, publish a test goal:
 
@@ -96,4 +124,6 @@ ros2 topic pub --once /goal geometry_msgs/msg/PointStamped \
 
 Expected result: Gazebo shows the office environment, `/camera/image_raw`,
 `/registered_scan`, and `/terrain_map_ext` publish data, and Air-FAR RViz shows
-the navigation graph, contours, and path markers.
+the navigation graph, contours, and path markers. A successful closed-loop run
+also has a plausible `/way_point`, a `/path` that is no longer only the origin,
+nonzero `/cmd_vel`, and visible UAV motion in Gazebo.
