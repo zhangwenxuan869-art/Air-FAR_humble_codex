@@ -1,0 +1,125 @@
+[INFO] [launch]: All log files can be found below /home/wenxuan/Air-FAR_humble_codex/docs/runtime_notes/ros_logs_20260507_150847/2026-05-07-15-08-48-194836-wenxuan-Lenovo-Legion-R70002021-38
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [localPlanner-1]: process started with pid [50]
+[INFO] [pathFollower-2]: process started with pid [52]
+[INFO] [static_transform_publisher-3]: process started with pid [54]
+[INFO] [static_transform_publisher-4]: process started with pid [56]
+[INFO] [terrainAnalysis-5]: process started with pid [58]
+[INFO] [terrainAnalysisExt-6]: process started with pid [60]
+[INFO] [gzserver-7]: process started with pid [62]
+[INFO] [robot_state_publisher-8]: process started with pid [64]
+[INFO] [spawn_entity.py-9]: process started with pid [66]
+[INFO] [spawn_entity.py-10]: process started with pid [68]
+[INFO] [spawn_entity.py-11]: process started with pid [70]
+[INFO] [sensorScanGeneration-12]: process started with pid [72]
+[INFO] [visualizationTools-13]: process started with pid [74]
+[INFO] [realTimePlot.py-14]: process started with pid [76]
+[INFO] [joy_node-15]: process started with pid [78]
+[pathFollower-2] [37;1m2026-05-07 15:08:48.814 [31;1m[[37;1mTRANSPORT_UDP[31;1m Error] [37mError creating socket: Operation not permitted[34;1m -> Function [36minit[m
+[pathFollower-2] [37;1m2026-05-07 15:08:48.815 [31;1m[[37;1mRTPS_PARTICIPANT[31;1m Error] [37mUser transport failed to register.[34;1m -> Function [36mRTPSParticipantImpl[m
+[pathFollower-2] getifaddrs: Operation not permitted
+[pathFollower-2] getifaddrs: Operation not permitted
+[pathFollower-2] getifaddrs: Operation not permitted
+[static_transform_publisher-3] [WARN] [1778137728.813224520] []: Old-style arguments are deprecated; see --help for new-style arguments
+[static_transform_publisher-3] getifaddrs: Operation not permitted
+[static_transform_publisher-3] getifaddrs: Operation not permitted
+[static_transform_publisher-3] getifaddrs: Operation not permitted
+[static_transform_publisher-4] [WARN] [1778137728.813455428] []: Old-style arguments are deprecated; see --help for new-style arguments
+[static_transform_publisher-4] getifaddrs: Operation not permitted
+[static_transform_publisher-4] getifaddrs: Operation not permitted
+[static_transform_publisher-4] getifaddrs: Operation not permitted
+[robot_state_publisher-8] getifaddrs: Operation not permitted
+[robot_state_publisher-8] getifaddrs: Operation not permitted
+[robot_state_publisher-8] getifaddrs: Operation not permitted
+[robot_state_publisher-8] [37;1m2026-05-07 15:08:48.821 [31;1m[[37;1mTRANSPORT_UDP[31;1m Error] [37mError creating socket: Operation not permitted[34;1m -> Function [36minit[m
+[robot_state_publisher-8] [37;1m2026-05-07 15:08:48.821 [31;1m[[37;1mRTPS_PARTICIPANT[31;1m Error] [37mUser transport failed to register.[34;1m -> Function [36mRTPSParticipantImpl[m
+[sensorScanGeneration-12] getifaddrs: Operation not permitted
+[sensorScanGeneration-12] getifaddrs: Operation not permitted
+[sensorScanGeneration-12] getifaddrs: Operation not permitted
+[localPlanner-1] getifaddrs: Operation not permitted
+[localPlanner-1] getifaddrs: Operation not permitted
+[sensorScanGeneration-12] [37;1m2026-05-07 15:08:48.823 [31;1m[[37;1mTRANSPORT_UDP[31;1m Error] [37mError creating socket: Operation not permitted[34;1m -> Function [36minit[m
+[sensorScanGeneration-12] [37;1m2026-05-07 15:08:48.823 [31;1m[[37;1mRTPS_PARTICIPANT[31;1m Error] [37mUser transport failed to register.[34;1m -> Function [36mRTPSParticipantImpl[m
+[terrainAnalysis-5] getifaddrs: Operation not permitted
+[terrainAnalysis-5] getifaddrs: Operation not permitted
+[localPlanner-1] getifaddrs: Operation not permitted
+[localPlanner-1] [37;1m2026-05-07 15:08:48.824 [31;1m[[37;1mTRANSPORT_UDP[31;1m Error] [37mError creating socket: Operation not permitted[34;1m -> Function [36minit[m
+[localPlanner-1] [37;1m2026-05-07 15:08:48.824 [31;1m[[37;1mRTPS_PARTICIPANT[31;1m Error] [37mUser transport failed to register.[34;1m -> Function [36mRTPSParticipantImpl[m
+[terrainAnalysis-5] getifaddrs: Operation not permitted
+[terrainAnalysisExt-6] getifaddrs: Operation not permitted
+[terrainAnalysisExt-6] getifaddrs: Operation not permitted
+[terrainAnalysisExt-6] getifaddrs: Operation not permitted
+[terrainAnalysis-5] [37;1m2026-05-07 15:08:48.826 [31;1m[[37;1mTRANSPORT_UDP[31;1m Error] [37mError creating socket: Operation not permitted[34;1m -> Function [36minit[m
+[terrainAnalysis-5] [37;1m2026-05-07 15:08:48.826 [31;1m[[37;1mRTPS_PARTICIPANT[31;1m Error] [37mUser transport failed to register.[34;1m -> Function [36mRTPSParticipantImpl[m
+[terrainAnalysisExt-6] [37;1m2026-05-07 15:08:48.828 [31;1m[[37;1mTRANSPORT_UDP[31;1m Error] [37mError creating socket: Operation not permitted[34;1m -> Function [36minit[m
+[terrainAnalysisExt-6] [37;1m2026-05-07 15:08:48.828 [31;1m[[37;1mRTPS_PARTICIPANT[31;1m Error] [37mUser transport failed to register.[34;1m -> Function [36mRTPSParticipantImpl[m
+[static_transform_publisher-3] [INFO] [1778137728.833212227] [vehicleTransPublisher]: Spinning until stopped - publishing transform
+[static_transform_publisher-3] translation: ('-0.000000', '-0.000000', '0.000000')
+[static_transform_publisher-3] rotation: ('0.000000', '0.000000', '0.000000', '1.000000')
+[static_transform_publisher-3] from '/sensor' to '/vehicle'
+[robot_state_publisher-8] [INFO] [1778137728.842793226] [robot_state_publisher]: got segment lidar
+[robot_state_publisher-8] [INFO] [1778137728.842916712] [robot_state_publisher]: got segment velodyne
+[robot_state_publisher-8] [INFO] [1778137728.842933894] [robot_state_publisher]: got segment velodyne_base_link
+[static_transform_publisher-4] [INFO] [1778137728.843915776] [sensorTransPublisher]: Spinning until stopped - publishing transform
+[static_transform_publisher-4] translation: ('0.000000', '0.000000', '0.000000')
+[static_transform_publisher-4] rotation: ('-0.500000', '0.500000', '-0.500000', '0.500000')
+[static_transform_publisher-4] from '/sensor' to '/camera'
+[joy_node-15] getifaddrs: Operation not permitted
+[joy_node-15] getifaddrs: Operation not permitted
+[joy_node-15] getifaddrs: Operation not permitted
+[joy_node-15] [37;1m2026-05-07 15:08:48.859 [31;1m[[37;1mTRANSPORT_UDP[31;1m Error] [37mError creating socket: Operation not permitted[34;1m -> Function [36minit[m
+[joy_node-15] [37;1m2026-05-07 15:08:48.859 [31;1m[[37;1mRTPS_PARTICIPANT[31;1m Error] [37mUser transport failed to register.[34;1m -> Function [36mRTPSParticipantImpl[m
+[localPlanner-1] [INFO] [1778137728.863383416] [localPlanner]: Reading path files.
+[visualizationTools-13] getifaddrs: Operation not permitted
+[visualizationTools-13] getifaddrs: Operation not permitted
+[visualizationTools-13] getifaddrs: Operation not permitted
+[visualizationTools-13] [37;1m2026-05-07 15:08:48.872 [31;1m[[37;1mTRANSPORT_UDP[31;1m Error] [37mError creating socket: Operation not permitted[34;1m -> Function [36minit[m
+[visualizationTools-13] [37;1m2026-05-07 15:08:48.872 [31;1m[[37;1mRTPS_PARTICIPANT[31;1m Error] [37mUser transport failed to register.[34;1m -> Function [36mRTPSParticipantImpl[m
+[visualizationTools-13] [WARN] [1778137728.980031407] [visualizationTools]: Couldn't open metric log file: /home/wenxuan/Air-FAR_humble_codex/install/vehicle_simulator/share/vehicle_simulator/log/metrics_2026-5-7-15-8-48.txt
+[visualizationTools-13] [WARN] [1778137728.980170259] [visualizationTools]: Couldn't open trajectory log file: /home/wenxuan/Air-FAR_humble_codex/install/vehicle_simulator/share/vehicle_simulator/log/trajectory_2026-5-7-15-8-48.txt
+[ERROR] [joy_node-15]: process has died [pid 78, exit code -11, cmd '/opt/ros/humble/lib/joy/joy_node --ros-args -r __node:=ps3_joy --params-file /tmp/launch_params_n1jqzykq'].
+[gzserver-7] getifaddres: Operation not permitted
+[spawn_entity.py-10] getifaddrs: Operation not permitted
+[spawn_entity.py-10] getifaddrs: Operation not permitted
+[spawn_entity.py-10] getifaddrs: Operation not permitted
+[spawn_entity.py-10] [37;1m2026-05-07 15:08:49.119 [31;1m[[37;1mTRANSPORT_UDP[31;1m Error] [37mError creating socket: Operation not permitted[34;1m -> Function [36minit[m
+[spawn_entity.py-10] [37;1m2026-05-07 15:08:49.119 [31;1m[[37;1mRTPS_PARTICIPANT[31;1m Error] [37mUser transport failed to register.[34;1m -> Function [36mRTPSParticipantImpl[m
+[spawn_entity.py-11] getifaddrs: Operation not permitted
+[spawn_entity.py-11] getifaddrs: Operation not permitted
+[ERROR] [gzserver-7]: process has died [pid 62, exit code 255, cmd 'gzserver /home/wenxuan/Air-FAR_humble_codex/external/aerial_autonomy_development_environment/src/vehicle_simulator/world/office.world -slibgazebo_ros_init.so -slibgazebo_ros_factory.so -slibgazebo_ros_force_system.so'].
+[spawn_entity.py-11] getifaddrs: Operation not permitted
+[spawn_entity.py-11] [37;1m2026-05-07 15:08:49.133 [31;1m[[37;1mTRANSPORT_UDP[31;1m Error] [37mError creating socket: Operation not permitted[34;1m -> Function [36minit[m
+[spawn_entity.py-11] [37;1m2026-05-07 15:08:49.133 [31;1m[[37;1mRTPS_PARTICIPANT[31;1m Error] [37mUser transport failed to register.[34;1m -> Function [36mRTPSParticipantImpl[m
+[spawn_entity.py-9] getifaddrs: Operation not permitted
+[spawn_entity.py-9] getifaddrs: Operation not permitted
+[spawn_entity.py-9] getifaddrs: Operation not permitted
+[spawn_entity.py-9] [37;1m2026-05-07 15:08:49.149 [31;1m[[37;1mTRANSPORT_UDP[31;1m Error] [37mError creating socket: Operation not permitted[34;1m -> Function [36minit[m
+[spawn_entity.py-9] [37;1m2026-05-07 15:08:49.149 [31;1m[[37;1mRTPS_PARTICIPANT[31;1m Error] [37mUser transport failed to register.[34;1m -> Function [36mRTPSParticipantImpl[m
+[spawn_entity.py-10] [INFO] [1778137729.180258800] [spawn_entity]: Spawn Entity started
+[spawn_entity.py-10] [INFO] [1778137729.180662364] [spawn_entity]: Loading entity XML from file /home/wenxuan/Air-FAR_humble_codex/install/vehicle_simulator/share/vehicle_simulator/urdf/robot.sdf
+[spawn_entity.py-10] [INFO] [1778137729.182110462] [spawn_entity]: Waiting for service /spawn_entity, timeout = 120
+[spawn_entity.py-10] [INFO] [1778137729.182507532] [spawn_entity]: Waiting for service /spawn_entity
+[spawn_entity.py-11] [INFO] [1778137729.191421509] [spawn_entity]: Spawn Entity started
+[spawn_entity.py-11] [INFO] [1778137729.191772620] [spawn_entity]: Loading entity XML from file /home/wenxuan/Air-FAR_humble_codex/install/vehicle_simulator/share/vehicle_simulator/urdf/camera.urdf.xacro
+[spawn_entity.py-11] [INFO] [1778137729.192274178] [spawn_entity]: Waiting for service /spawn_entity, timeout = 120
+[spawn_entity.py-11] [INFO] [1778137729.192558587] [spawn_entity]: Waiting for service /spawn_entity
+[spawn_entity.py-9] [INFO] [1778137729.204960837] [spawn_entity]: Spawn Entity started
+[spawn_entity.py-9] [INFO] [1778137729.205309085] [spawn_entity]: Loading entity published on topic robot_description
+[spawn_entity.py-9] [INFO] [1778137729.207160189] [spawn_entity]: Waiting for entity xml on robot_description
+[spawn_entity.py-9] [INFO] [1778137729.217876239] [spawn_entity]: Waiting for service /spawn_entity, timeout = 120
+[spawn_entity.py-9] [INFO] [1778137729.218308650] [spawn_entity]: Waiting for service /spawn_entity
+[localPlanner-1] [INFO] [1778137729.264960760] [localPlanner]: Initialization complete.
+[realTimePlot.py-14] getifaddrs: Operation not permitted
+[realTimePlot.py-14] getifaddrs: Operation not permitted
+[realTimePlot.py-14] getifaddrs: Operation not permitted
+[realTimePlot.py-14] [37;1m2026-05-07 15:08:50.034 [31;1m[[37;1mTRANSPORT_UDP[31;1m Error] [37mError creating socket: Operation not permitted[34;1m -> Function [36minit[m
+[realTimePlot.py-14] [37;1m2026-05-07 15:08:50.034 [31;1m[[37;1mRTPS_PARTICIPANT[31;1m Error] [37mUser transport failed to register.[34;1m -> Function [36mRTPSParticipantImpl[m
+[realTimePlot.py-14] /home/wenxuan/Air-FAR_humble_codex/install/visualization_tools/lib/visualization_tools/realTimePlot.py:140: UserWarning: Matplotlib is currently using agg, which is a non-GUI backend, so cannot show the figure.
+[realTimePlot.py-14]   plt.pause(0.01)
+[INFO] [vehicleSimulator-16]: process started with pid [242]
+[vehicleSimulator-16] getifaddrs: Operation not permitted
+[vehicleSimulator-16] getifaddrs: Operation not permitted
+[vehicleSimulator-16] getifaddrs: Operation not permitted
+[vehicleSimulator-16] [37;1m2026-05-07 15:08:53.831 [31;1m[[37;1mTRANSPORT_UDP[31;1m Error] [37mError creating socket: Operation not permitted[34;1m -> Function [36minit[m
+[vehicleSimulator-16] [37;1m2026-05-07 15:08:53.831 [31;1m[[37;1mRTPS_PARTICIPANT[31;1m Error] [37mUser transport failed to register.[34;1m -> Function [36mRTPSParticipantImpl[m
+[vehicleSimulator-16] [INFO] [1778137734.523778717] [vehicleSimulator]: Simulation started.

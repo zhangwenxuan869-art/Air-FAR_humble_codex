@@ -1,0 +1,5 @@
+# generated from @PROJECT_NAME@/hook/gazebo_model_path.sh.in
+
+if [ -d "$AMENT_CURRENT_PREFIX/share/@PROJECT_NAME@/mesh" ]; then
+  ament_prepend_unique_value GAZEBO_MODEL_PATH "$AMENT_CURRENT_PREFIX/share/@PROJECT_NAME@/mesh"
+fi

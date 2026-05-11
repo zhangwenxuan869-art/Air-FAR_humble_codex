@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="rgbd_camera">
+
+  <link name="rgbd_camera">
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.001 0.001 0.001"/>
+      </geometry>
+    </collision>
+
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+
+    <inertial>
+      <mass value="1e-5"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
+    </inertial>
+  </link>
+
+  <gazebo reference="rgbd_camera">
+    <gravity>false</gravity>
+    <kinematic>true</kinematic>
+    <sensor type="depth" name="rgbd_camera">
+      <update_rate>15.0</update_rate>
+      <visualize>false</visualize>
+      <camera name="head">
+        <horizontal_fov>1.65</horizontal_fov>
+        <image>
+          <width>320</width>
+          <height>180</height>
+          <format>R8G8B8</format>
+        </image>
+        <depth_camera>
+        </depth_camera>
+        <clip>
+          <near>0.2</near>
+          <far>30.0</far>
+        </clip>
+      </camera>
+      <plugin name="rgbd_camera_controller" filename="libgazebo_ros_camera.so">
+        <ros>
+          <namespace>/rgbd_camera</namespace>
+          <remapping>rgbd_camera/image_raw:=color/image</remapping>
+          <remapping>rgbd_camera/camera_info:=color/camera_info</remapping>
+          <remapping>rgbd_camera/depth/image_raw:=depth/image</remapping>
+          <remapping>rgbd_camera/depth/camera_info:=depth/camera_info</remapping>
+          <remapping>rgbd_camera/points:=depth/points</remapping>
+        </ros>
+        <camera_name>rgbd_camera</camera_name>
+        <frame_name>rgbd_camera</frame_name>
+        <min_depth>0.1</min_depth>
+        <max_depth>6.0</max_depth>
+      </plugin>
+    </sensor>
+  </gazebo>
+
+</robot>

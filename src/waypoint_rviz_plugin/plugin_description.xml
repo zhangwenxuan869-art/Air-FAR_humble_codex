@@ -1,0 +1,9 @@
+<library path="waypoint_rviz_plugin">
+  <class name="rviz_plugins/Goal3DTool"
+         type="waypoint_rviz_plugin::Goal3DTool"
+         base_class_type="rviz_common::Tool">
+    <description>
+      Tool for setting a 3D free-space waypoint for the Air-FAR simulator.
+    </description>
+  </class>
+</library>

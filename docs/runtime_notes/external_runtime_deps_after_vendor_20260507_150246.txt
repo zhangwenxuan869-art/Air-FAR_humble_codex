@@ -1,0 +1,87 @@
+
+===== Workspace paths =====
+repo: /home/wenxuan/Air-FAR_humble_codex
+external workspace: /home/wenxuan/far_planner
+external src: /home/wenxuan/far_planner/src
+external install: /home/wenxuan/far_planner/install
+
+===== ros2 pkg prefix resolution =====
+vehicle_simulator                /home/wenxuan/Air-FAR_humble_codex/install/vehicle_simulator  [repo install]
+local_planner                    /home/wenxuan/Air-FAR_humble_codex/install/local_planner  [repo install]
+terrain_analysis                 /home/wenxuan/Air-FAR_humble_codex/install/terrain_analysis  [repo install]
+terrain_analysis_ext             /home/wenxuan/Air-FAR_humble_codex/install/terrain_analysis_ext  [repo install]
+sensor_scan_generation           /home/wenxuan/Air-FAR_humble_codex/install/sensor_scan_generation  [repo install]
+graph_decoder                    /home/wenxuan/Air-FAR_humble_codex/install/graph_decoder  [repo install]
+velodyne_description             /home/wenxuan/Air-FAR_humble_codex/install/velodyne_description  [repo install]
+velodyne_gazebo_plugins          /home/wenxuan/Air-FAR_humble_codex/install/velodyne_gazebo_plugins  [repo install]
+velodyne_simulator               /home/wenxuan/Air-FAR_humble_codex/install/velodyne_simulator  [repo install]
+visualization_tools              /home/wenxuan/Air-FAR_humble_codex/install/visualization_tools  [repo install]
+waypoint_rviz_plugin             /home/wenxuan/far_planner/install/waypoint_rviz_plugin  [external far_planner install]
+teleop_rviz_plugin               /home/wenxuan/far_planner/install/teleop_rviz_plugin  [external far_planner install]
+far_planner                      /home/wenxuan/far_planner/install/far_planner  [external far_planner install]
+
+===== Source package locations =====
+vehicle_simulator
+  repo source:     /home/wenxuan/Air-FAR_humble_codex/src/vendor/autonomous_exploration_development_environment/src/vehicle_simulator
+  repo build_type: ament_cmake
+  external source: /home/wenxuan/far_planner/src/autonomous_exploration_development_environment/src/vehicle_simulator
+  external build_type: ament_cmake
+local_planner
+  repo source:     /home/wenxuan/Air-FAR_humble_codex/src/vendor/autonomous_exploration_development_environment/src/local_planner
+  repo build_type: ament_cmake
+  external source: /home/wenxuan/far_planner/src/autonomous_exploration_development_environment/src/local_planner
+  external build_type: ament_cmake
+terrain_analysis
+  repo source:     /home/wenxuan/Air-FAR_humble_codex/src/vendor/autonomous_exploration_development_environment/src/terrain_analysis
+  repo build_type: ament_cmake
+  external source: /home/wenxuan/far_planner/src/autonomous_exploration_development_environment/src/terrain_analysis
+  external build_type: ament_cmake
+terrain_analysis_ext
+  repo source:     /home/wenxuan/Air-FAR_humble_codex/src/vendor/autonomous_exploration_development_environment/src/terrain_analysis_ext
+  repo build_type: ament_cmake
+  external source: /home/wenxuan/far_planner/src/autonomous_exploration_development_environment/src/terrain_analysis_ext
+  external build_type: ament_cmake
+sensor_scan_generation
+  repo source:     /home/wenxuan/Air-FAR_humble_codex/src/vendor/autonomous_exploration_development_environment/src/sensor_scan_generation
+  repo build_type: ament_cmake
+  external source: /home/wenxuan/far_planner/src/autonomous_exploration_development_environment/src/sensor_scan_generation
+  external build_type: ament_cmake
+graph_decoder
+  repo source:     /home/wenxuan/Air-FAR_humble_codex/src/vendor/autonomous_exploration_development_environment/src/graph_decoder
+  repo build_type: ament_cmake
+  external source: /home/wenxuan/far_planner/src/far_planner/src/graph_decoder
+  external build_type: ament_cmake
+velodyne_description
+  repo source:     /home/wenxuan/Air-FAR_humble_codex/src/vendor/autonomous_exploration_development_environment/src/velodyne_description
+  repo build_type: ament_cmake
+  external source: /home/wenxuan/far_planner/src/autonomous_exploration_development_environment/src/velodyne_simulator/velodyne_description
+  external build_type: ament_cmake
+velodyne_gazebo_plugins
+  repo source:     /home/wenxuan/Air-FAR_humble_codex/src/vendor/autonomous_exploration_development_environment/src/velodyne_gazebo_plugins
+  repo build_type: ament_cmake
+  external source: /home/wenxuan/far_planner/src/autonomous_exploration_development_environment/src/velodyne_simulator/velodyne_gazebo_plugins
+  external build_type: ament_cmake
+velodyne_simulator
+  repo source:     /home/wenxuan/Air-FAR_humble_codex/src/vendor/autonomous_exploration_development_environment/src/velodyne_simulator
+  repo build_type: ament_cmake
+  external source: /home/wenxuan/far_planner/src/autonomous_exploration_development_environment/src/velodyne_simulator/velodyne_simulator
+  external build_type: ament_cmake
+visualization_tools
+  repo source:     /home/wenxuan/Air-FAR_humble_codex/src/vendor/autonomous_exploration_development_environment/src/visualization_tools
+  repo build_type: ament_cmake
+  external source: /home/wenxuan/far_planner/src/autonomous_exploration_development_environment/src/visualization_tools
+  external build_type: ament_cmake
+waypoint_rviz_plugin
+  repo source:     missing
+  external source: /home/wenxuan/far_planner/src/autonomous_exploration_development_environment/src/waypoint_rviz_plugin
+  external build_type: ament_cmake
+teleop_rviz_plugin
+  repo source:     missing
+  external source: /home/wenxuan/far_planner/src/far_planner/src/teleop_rviz_plugin
+  external build_type: ament_cmake
+far_planner
+  repo source:     missing
+  external source: /home/wenxuan/far_planner/src/far_planner/src/far_planner
+  external build_type: ament_cmake
+
+===== Vendor hygiene =====

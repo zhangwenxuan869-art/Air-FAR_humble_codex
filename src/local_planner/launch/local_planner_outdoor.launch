@@ -1,0 +1,126 @@
+<launch>
+
+  <arg name="stateEstimationTopic" default="/state_estimation"/>
+  <arg name="depthCloudTopic" default="/rgbd_camera/depth/points"/>
+  <arg name="autonomyMode" default="false"/>
+  <arg name="depthCloudDelay" default="0.0"/>
+  <arg name="depthCamPitchOffset" default="0.0"/>
+  <arg name="depthCamXOffset" default="0.0"/>
+  <arg name="depthCamYOffset" default="0.0"/>
+  <arg name="depthCamZOffset" default="0.0"/>
+  <arg name="trackingCamBackward" default="false"/>
+  <arg name="trackingCamXOffset" default="0.0"/>
+  <arg name="trackingCamYOffset" default="0.0"/>
+  <arg name="trackingCamZOffset" default="0.0"/>
+  <arg name="trackingCamScale" default="1.0"/>
+  <arg name="stopDis" default="1.0"/>
+  <arg name="shiftGoalAtStart" default="false"/>
+  <arg name="goalX" default="0.0"/>
+  <arg name="goalY" default="0.0"/>
+  <arg name="goalZ" default="4.0"/>
+  <arg name="sim_name" default="unity"/>
+  <arg name="sensor_name" default="lidar"/>
+
+  <node pkg="local_planner" exec="localPlanner" name="localPlanner" output="screen">
+    <param name="pathFolder" type="str" value="$(find-pkg-share local_planner)/paths" />
+    <param name="stateEstimationTopic" value="$(var stateEstimationTopic)" />
+    <param name="autonomyMode" value="$(var autonomyMode)" />
+    <param name="depthCloudTopic" value="$(var depthCloudTopic)" />
+    <param name="depthCloudDelay" value="$(var depthCloudDelay)" />
+    <param name="depthCamPitchOffset" value="$(var depthCamPitchOffset)" />
+    <param name="depthCamXOffset" value="$(var depthCamXOffset)" />
+    <param name="depthCamYOffset" value="$(var depthCamYOffset)" />
+    <param name="depthCamZOffset" value="$(var depthCamZOffset)" />
+    <param name="trackingCamBackward" value="$(var trackingCamBackward)" />
+    <param name="trackingCamXOffset" value="$(var trackingCamXOffset)" />
+    <param name="trackingCamYOffset" value="$(var trackingCamYOffset)" />
+    <param name="trackingCamZOffset" value="$(var trackingCamZOffset)" />
+    <param name="trackingCamScale" value="$(var trackingCamScale)" />
+    <param name="scanVoxelSize" type="float" value="0.2" />
+    <param name="pointPerPathThre" type="int" value="2" />
+    <param name="maxRange" type="float" value="16.0" />
+    <param name="maxElev" type="float" value="30.0" />
+    <param name="keepSurrCloud" type="bool" value="true" />
+    <param name="keepHoriDis" type="float" value="2.0" />
+    <param name="keepVertDis" type="float" value="1.0" />
+    <param name="lowerBoundZ" type="float" value="-4.8" />
+    <param name="upperBoundZ" type="float" value="4.8" />
+    <param name="pitchDiffLimit" type="float" value="35.0" />
+    <param name="pitchWeight" type="float" value="0.03" />
+    <param name="sensorMaxPitch" type="float" value="25.0" />
+    <param name="sensorMaxYaw" type="float" value="40.0" />
+    <param name="yawDiffLimit" type="float" value="60.0" />
+    <param name="yawWeight" type="float" value="0.015" />
+    <param name="pathScale" type="float" value="2.0" />
+    <param name="minPathScale" type="float" value="1.0" />
+    <param name="pathScaleStep" type="float" value="0.5" />
+    <param name="pathScaleBySpeed" type="bool" value="true" />
+    <param name="stopDis" value="$(var stopDis)" />
+    <param name="shiftGoalAtStart" value="$(var shiftGoalAtStart)" />
+    <param name="goalX" value="$(var goalX)" />
+    <param name="goalY" value="$(var goalY)" />
+    <param name="goalZ" value="$(var goalZ)" />
+    <param name="sim_name" value="$(var sim_name)" />
+    <param name="sensor_name" value="$(var sensor_name)" />
+  </node>
+
+  <node pkg="local_planner" exec="pathFollower" name="pathFollower" output="screen">
+    <param name="stateEstimationTopic" value="$(var stateEstimationTopic)" />
+    <param name="desiredTrajFile" type="str" value="$(env HOME)/Desktop/trajectory_desired.txt" />
+    <param name="executedTrajFile" type="str" value="$(env HOME)/Desktop/trajectory_executed.txt" />
+    <param name="saveTrajectory" type="bool" value="false" />
+    <param name="saveTrajInverval" type="float" value="0.1" />
+    <param name="waypointTest" type="bool" value="false" />
+    <param name="waypointNum" type="int" value="6" />
+    <param name="waypointInterval" type="float" value="1.0" />
+    <param name="waypointYaw" type="float" value="45.0" />
+    <param name="waypointZ" type="float" value="2.0" />
+    <param name="autonomyMode" value="$(var autonomyMode)" />
+    <param name="pubSkipNum" type="int" value="1" />
+    <param name="trackingCamBackward" value="$(var trackingCamBackward)" />
+    <param name="trackingCamXOffset" value="$(var trackingCamXOffset)" />
+    <param name="trackingCamYOffset" value="$(var trackingCamYOffset)" />
+    <param name="trackingCamZOffset" value="$(var trackingCamZOffset)" />
+    <param name="trackingCamScale" value="$(var trackingCamScale)" />
+    <param name="trackPitch" type="float" value="0" />
+    <param name="lookAheadScale" type="float" value="0.2" />
+    <param name="minLookAheadDis" type="float" value="0.4" />
+    <param name="minSpeed" type="float" value="1.0" />
+    <param name="maxSpeed" type="float" value="4.0" />
+    <param name="accXYGain" type="float" value="0.05" />
+    <param name="velXYGain" type="float" value="0.4" />
+    <param name="posXYGain" type="float" value="0.1" />
+    <param name="stopVelXYGain" type="float" value="0.2" />
+    <param name="stopPosXYGain" type="float" value="0.2" />
+    <param name="smoothIncrSpeed" type="float" value="1.5" />
+    <param name="maxRollPitch" type="float" value="30.0" />
+    <param name="yawRateScale" type="float" value="1.0" />
+    <param name="yawGain" type="float" value="2.0" />
+    <param name="yawBoostScale" type="float" value="2.0" />
+    <param name="maxRateByYaw" type="float" value="60.0" />
+    <param name="velZScale" type="float" value="1.0" />
+    <param name="posZGain" type="float" value="1.5" />
+    <param name="posZBoostScale" type="float" value="2.0" />
+    <param name="maxVelByPosZ" type="float" value="1.0" />
+    <param name="manualSpeedXY" type="float" value="4.0" />
+    <param name="manualSpeedZ" type="float" value="2.0" />
+    <param name="manualYawRate" type="float" value="60.0" />
+    <param name="slowTurnRate" type="float" value="1.0" />
+    <param name="minSlowTurnCurv" type="float" value="0.225" />
+    <param name="minSlowTurnInterval" type="float" value="1.0" />
+    <param name="minStopRotInterval" type="float" value="1.0" />
+    <param name="stopRotDelayTime" type="float" value="0" />
+    <param name="stopRotDis" type="float" value="2.0" />
+    <param name="stopRotYaw1" type="float" value="90.0" />
+    <param name="stopRotYaw2" type="float" value="10.0" />
+    <param name="stopDis" value="$(var stopDis)" />
+    <param name="slowDis" type="float" value="4.0" />
+    <param name="joyDeadband" type="float" value="0.1" />
+    <param name="joyToSpeedDelay" type="float" value="2.0" />
+    <param name="shiftGoalAtStart" value="$(var shiftGoalAtStart)" />
+    <param name="goalX" value="$(var goalX)" />
+    <param name="goalY" value="$(var goalY)" />
+    <param name="goalZ" value="$(var goalZ)" />
+  </node>
+
+</launch>

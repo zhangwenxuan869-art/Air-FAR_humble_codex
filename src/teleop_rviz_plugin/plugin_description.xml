@@ -1,0 +1,9 @@
+<library path="teleop_rviz_plugin">
+  <class name="rviz/ControlPanel"
+         type="teleop_rviz_plugin::TeleopPanel"
+         base_class_type="rviz_common::Panel">
+    <description>
+      A panel for publishing joystick commands used by the Air-FAR simulator.
+    </description>
+  </class>
+</library>
