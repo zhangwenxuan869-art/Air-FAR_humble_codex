@@ -7,6 +7,7 @@ from launch.conditions import IfCondition
 from launch.launch_description_sources import FrontendLaunchDescriptionSource
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
+from launch.substitutions import PythonExpression
 from launch_ros.actions import Node
 
 
@@ -20,6 +21,20 @@ def generate_launch_description():
         vehicle_share, "launch", "vehicle_simulator_gazebo.launch.py"
     )
     sim_rviz = os.path.join(vehicle_share, "rviz", "vehicle_simulator_gazebo.rviz")
+    map_name = LaunchConfiguration("map_name")
+    indoor_maps = ["office", "office_simple", "indoor", "matterport"]
+    is_indoor_map = PythonExpression(["'", map_name, "' in ", str(indoor_maps)])
+    is_outdoor_map = PythonExpression(["'", map_name, "' not in ", str(indoor_maps)])
+    local_planner_args = {
+        "stateEstimationTopic": "/state_estimation",
+        "depthCloudTopic": "/registered_scan",
+        "autonomyMode": LaunchConfiguration("autonomyMode"),
+        "goalX": LaunchConfiguration("vehicleX"),
+        "goalY": LaunchConfiguration("vehicleY"),
+        "goalZ": LaunchConfiguration("vehicleZ"),
+        "sim_name": "gazebo",
+        "sensor_name": LaunchConfiguration("sensor_name"),
+    }
 
     return LaunchDescription([
         DeclareLaunchArgument("map_name", default_value="office"),
@@ -56,16 +71,17 @@ def generate_launch_description():
             FrontendLaunchDescriptionSource(
                 os.path.join(local_planner_share, "launch", "local_planner.launch")
             ),
-            launch_arguments={
-                "stateEstimationTopic": "/state_estimation",
-                "depthCloudTopic": "/registered_scan",
-                "autonomyMode": LaunchConfiguration("autonomyMode"),
-                "goalX": LaunchConfiguration("vehicleX"),
-                "goalY": LaunchConfiguration("vehicleY"),
-                "goalZ": LaunchConfiguration("vehicleZ"),
-                "sim_name": "gazebo",
-                "sensor_name": LaunchConfiguration("sensor_name"),
-            }.items(),
+            launch_arguments=local_planner_args.items(),
+            condition=IfCondition(is_indoor_map),
+        ),
+        IncludeLaunchDescription(
+            FrontendLaunchDescriptionSource(
+                os.path.join(
+                    local_planner_share, "launch", "local_planner_outdoor.launch"
+                )
+            ),
+            launch_arguments=local_planner_args.items(),
+            condition=IfCondition(is_outdoor_map),
         ),
         IncludeLaunchDescription(
             FrontendLaunchDescriptionSource(

@@ -36,7 +36,7 @@ bool DynamicGraph::UpdateOdom(const Point3D& robot_pos, const std::vector<int>& 
     terrain_planner_.SetLocalTerrainObsCloud(DPUtil::local_terrain_obs_);
     cur_layer_idxs_ = cur_layers;
     this->ConvertWideLayerIdxs(cur_layer_idxs_, wide_layer_idxs_);
-    const int odom_layer_id = cur_layer_idxs_[DPUtil::kNeighborLayers];
+    const int odom_layer_id = cur_layer_idxs_[cur_layer_idxs_.size() / 2];
     if (odom_node_ptr_ == NULL) {
         this->CreateNavNodeFromPoint(robot_pos_, odom_layer_id, odom_node_ptr_, true);
         this->AddNodeToGraph(odom_node_ptr_);

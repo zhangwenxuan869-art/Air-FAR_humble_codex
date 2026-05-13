@@ -19,6 +19,7 @@ struct DPMasterParams {
     float voxel_dim;
     float sensor_range;
     float waypoint_project_dist;
+    float min_waypoint_z;
     std::string world_frame;
     float layer_resolution;
     int neighbor_layers;
@@ -52,6 +53,7 @@ private:
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr scan_sub_;
     rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr waypoint_sub_;
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr goal_pose_sub_;
+    rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr local_path_sub_;
     rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr goal_pub_;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr vertices_PCL_pub_;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr obs_world_pub_;
@@ -68,6 +70,8 @@ private:
     Point3D robot_pos_, robot_heading_, nav_heading_, nav_goal_;
 
     bool is_robot_stop_, is_new_iter_, is_reset_env_;
+    int blocked_local_path_count_;
+    int clear_local_path_count_;
 
     geometry_msgs::msg::PointStamped goal_waypoint_stamped_;
 
@@ -145,6 +149,7 @@ private:
     void ScanCallBack(const sensor_msgs::msg::PointCloud2::ConstSharedPtr pc);
     void WaypointCallBack(const geometry_msgs::msg::PointStamped::ConstSharedPtr msg);
     void GoalPoseCallBack(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg);
+    void LocalPathCallBack(const nav_msgs::msg::Path::ConstSharedPtr msg);
 
     void ExtractDynamicObsFromScan(const PointCloudPtr& scanCloudIn, 
                                    const PointCloudPtr& obsCloudIn, 
@@ -174,7 +179,9 @@ private:
         is_scan_init_       = false;
         is_planner_running_ = false; 
         is_goal_update_     = false;
-        is_dyobs_update_    = false;  
+        is_dyobs_update_    = false;
+        blocked_local_path_count_ = 0;
+        clear_local_path_count_ = 0;
         is_graph_init_      = false;
         is_robot_stop_      = false; 
         is_new_iter_        = false;

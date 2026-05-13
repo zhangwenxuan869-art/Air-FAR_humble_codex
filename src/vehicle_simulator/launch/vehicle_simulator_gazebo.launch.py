@@ -2,11 +2,12 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction, RegisterEventHandler
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction, RegisterEventHandler, TimerAction
+from launch.actions import SetEnvironmentVariable
 from launch.conditions import IfCondition
 from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import Command, LaunchConfiguration
+from launch.substitutions import Command, EnvironmentVariable, LaunchConfiguration
 from launch_ros.actions import Node
 
 
@@ -47,6 +48,7 @@ def generate_launch_description():
     sensor_name = LaunchConfiguration("sensor_name")
 
     world = [os.path.join(vehicle_share, "world", ""), map_name, ".world"]
+    model_path = os.path.join(vehicle_share, "mesh")
     robot_xacro = os.path.join(vehicle_share, "urdf", "robot.urdf.xacro")
     lidar_xacro = os.path.join(vehicle_share, "urdf", "lidar.urdf.xacro")
     camera_xacro = os.path.join(vehicle_share, "urdf", "rgbd_camera.urdf.xacro")
@@ -200,12 +202,17 @@ def generate_launch_description():
         DeclareLaunchArgument("rviz_config", default_value=""),
         DeclareLaunchArgument("sim_name", default_value="gazebo"),
         DeclareLaunchArgument("sensor_name", default_value="lidar"),
+        SetEnvironmentVariable("GAZEBO_MODEL_DATABASE_URI", ""),
+        SetEnvironmentVariable(
+            "GAZEBO_MODEL_PATH",
+            [model_path, ":/usr/share/gazebo-11/models:", EnvironmentVariable("GAZEBO_MODEL_PATH", default_value="")],
+        ),
         gazebo_server,
         gazebo_client,
         robot_state_publisher,
         lidar_state_publisher,
         camera_state_publisher,
-        spawn_robot,
+        TimerAction(period=3.0, actions=[spawn_robot]),
         spawn_lidar_after_robot,
         spawn_camera_after_lidar,
         start_vehicle_after_camera,

@@ -39,6 +39,7 @@ void DPMaster::Init() {
   waypoint_sub_      = control_nh_->create_subscription<geometry_msgs::msg::PointStamped>("/goal", 1, std::bind(&DPMaster::WaypointCallBack, this, std::placeholders::_1));
   goal_pose_sub_     = control_nh_->create_subscription<geometry_msgs::msg::PoseStamped>("/goal_pose", 1, std::bind(&DPMaster::GoalPoseCallBack, this, std::placeholders::_1));
   terrain_local_sub_ = nh_->create_subscription<sensor_msgs::msg::PointCloud2>("/terrain_local_cloud", 1, std::bind(&DPMaster::TerrainLocalCallBack, this, std::placeholders::_1));
+  local_path_sub_    = nh_->create_subscription<nav_msgs::msg::Path>("/path", 5, std::bind(&DPMaster::LocalPathCallBack, this, std::placeholders::_1));
   joy_command_sub_   = control_nh_->create_subscription<sensor_msgs::msg::Joy>("/joy", 5, std::bind(&DPMaster::JoyCommandCallBack, this, std::placeholders::_1));
 
   goal_pub_ = nh_->create_publisher<geometry_msgs::msg::PointStamped>("/way_point",5);
@@ -81,6 +82,8 @@ void DPMaster::Init() {
   is_robot_stop_      = false;
   is_new_iter_        = false;
   is_reset_env_       = false;
+  blocked_local_path_count_ = 0;
+  clear_local_path_count_ = 0;
 
   // allocate memory to pointers
   new_vertices_ptr_  = PointCloudPtr(new pcl::PointCloud<PCLPoint>());
@@ -243,6 +246,9 @@ void DPMaster::MainLoopCallBack() {
         if ((waypoint - current_free_goal).norm() > DPUtil::kEpsilon) {
           waypoint = this->ProjectNavWaypoint(waypoint, last_nav_goal);
         }
+        if (waypoint.z < master_params_.min_waypoint_z) {
+          waypoint.z = master_params_.min_waypoint_z;
+        }
         goal_waypoint_stamped_.point = DPUtil::Point3DToGeoMsgPoint(waypoint);
         goal_pub_->publish(goal_waypoint_stamped_);
         is_planner_running_ = true;
@@ -339,6 +345,7 @@ void DPMaster::LoadROSParams() {
   DeclareAndGet<float>(nh_, master_prefix + "vehicle_height", master_params_.vehicle_height, 0.75);
   DeclareAndGet<float>(nh_, master_prefix + "sensor_range", master_params_.sensor_range, 100.0);
   DeclareAndGet<float>(nh_, master_prefix + "reproject_dist", master_params_.waypoint_project_dist, 5.0);
+  DeclareAndGet<float>(nh_, master_prefix + "min_waypoint_z", master_params_.min_waypoint_z, -1000.0);
   DeclareAndGet<float>(nh_, master_prefix + "layer_resoltion", master_params_.layer_resolution, 1.0);
   DeclareAndGet<int>(nh_, master_prefix   + "neighbor_layer_num", master_params_.neighbor_layers, 2);
   DeclareAndGet<float>(nh_, master_prefix + "visualize_ratio", master_params_.viz_ratio, 1.0);
@@ -617,9 +624,16 @@ void DPMaster::WaypointCallBack(const geometry_msgs::msg::PointStamped::ConstSha
     ROS_WARN("DPMaster: waypoint published is not on world frame!");
     DPUtil::TransformPoint3DFrame(goal_frame, master_params_.world_frame, tf_buffer_, goal_p);
   }
-  const int layer_id = map_handler_.GetLayerId(goal_p);
+  int layer_id = map_handler_.GetLayerId(goal_p);
   if (layer_id != -1) {
     goal_p.z = DPUtil::layerIdx2Height_[layer_id];
+    if (goal_p.z < master_params_.min_waypoint_z) {
+      goal_p.z = master_params_.min_waypoint_z;
+      layer_id = map_handler_.GetLayerId(goal_p);
+      if (layer_id != -1) {
+        goal_p.z = DPUtil::layerIdx2Height_[layer_id];
+      }
+    }
     graph_planner_.UpdateGoal(goal_p, layer_id, false);
     is_goal_update_  = true;
     // visualize original goal
@@ -635,6 +649,46 @@ void DPMaster::GoalPoseCallBack(const geometry_msgs::msg::PoseStamped::ConstShar
   point_msg->header = msg->header;
   point_msg->point = msg->pose.position;
   this->WaypointCallBack(point_msg);
+}
+
+void DPMaster::LocalPathCallBack(const nav_msgs::msg::Path::ConstSharedPtr msg) {
+  if (!is_planner_running_) {
+    blocked_local_path_count_ = 0;
+    return;
+  }
+
+  const bool blocked_path = msg->poses.size() <= 1;
+  if (!blocked_path) {
+    blocked_local_path_count_ = 0;
+    ++clear_local_path_count_;
+    if (clear_local_path_count_ >= 20) {
+      graph_planner_.ClearEscapeBlockedNodes();
+      clear_local_path_count_ = 0;
+    }
+    return;
+  }
+
+  ++blocked_local_path_count_;
+  clear_local_path_count_ = 0;
+  if (blocked_local_path_count_ >= 5 && blocked_local_path_count_ % 5 == 0) {
+    const float goal_guard_dist = gp_params_.converge_dist + gp_params_.adjust_radius;
+    if (graph_planner_.DistanceToOriginGoal(robot_pos_) <= goal_guard_dist) {
+      ROS_WARN("DPMaster: local planner path is short near the original goal, keeping current goal.");
+      return;
+    }
+    bool blocked_first_hop = graph_planner_.BlockCurrentFirstHopForEscape();
+    if (blocked_local_path_count_ >= 15) {
+      blocked_first_hop = graph_planner_.BlockNonAscendingOdomNeighborsForEscape() || blocked_first_hop;
+    }
+    graph_planner_.ResetPathMomentum();
+    nav_heading_ = Point3D(0, 0, 0);
+    is_dyobs_update_ = true;
+    ROS_WARN("DPMaster: local planner has no valid path, forcing graph replan without path momentum%s.",
+             blocked_first_hop ? " and blocking the failed first hop" : "");
+  }
+  if (blocked_local_path_count_ > 100) {
+    blocked_local_path_count_ = 5;
+  }
 }
 
 /* allocate static utility PointCloud pointer memory */

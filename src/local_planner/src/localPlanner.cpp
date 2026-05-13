@@ -6,6 +6,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <algorithm>
 
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp/time.hpp"
@@ -105,6 +106,21 @@ bool shiftGoalAtStart = false;
 double goalX = 0;
 double goalY = 0;
 double goalZ = 1.0;
+bool enableVerticalEscape = false;
+double verticalEscapeMinObstacleHeight = 0.6;
+double verticalEscapeLookAhead = 5.0;
+double verticalEscapeCorridorWidth = 1.5;
+double verticalEscapeClearance = 0.6;
+double verticalEscapeMaxStep = 2.0;
+double verticalEscapeRadius = 0.8;
+double verticalEscapeLateralStep = 1.0;
+double verticalEscapeMaxLateralStep = 3.0;
+double verticalEscapeRelaxedRadius = 0.35;
+double verticalEscapeInfluenceRadius = 2.0;
+double verticalEscapeMinCheckZ = -0.3;
+int verticalEscapeFailFrames = 8;
+double verticalEscapeFallbackStep = 1.0;
+int failedPathCount = 0;
 
 // path parameters, set according to path files
 const int pathNum = 4375;
@@ -173,6 +189,208 @@ float trackPitch = 0;
 float trackYaw = 0;
 
 pcl::VoxelGrid<pcl::PointXYZ> downSizeFilter;
+
+float pointToSegmentDistanceSq(const pcl::PointXYZ& point,
+                               const pcl::PointXYZ& start,
+                               const pcl::PointXYZ& end)
+{
+  const float vx = end.x - start.x;
+  const float vy = end.y - start.y;
+  const float vz = end.z - start.z;
+  const float wx = point.x - start.x;
+  const float wy = point.y - start.y;
+  const float wz = point.z - start.z;
+  const float segLenSq = vx * vx + vy * vy + vz * vz;
+  float t = 0.0;
+  if (segLenSq > 0.001) {
+    t = (wx * vx + wy * vy + wz * vz) / segLenSq;
+    if (t < 0.0) t = 0.0;
+    else if (t > 1.0) t = 1.0;
+  }
+
+  const float dx = start.x + t * vx - point.x;
+  const float dy = start.y + t * vy - point.y;
+  const float dz = start.z + t * vz - point.z;
+  return dx * dx + dy * dy + dz * dz;
+}
+
+bool isEscapeSegmentClear(const pcl::PointXYZ& start,
+                          const pcl::PointXYZ& end,
+                          const float radius)
+{
+  const float radiusSq = radius * radius;
+  for (const auto& point : plannerCloud->points) {
+    if (point.z < verticalEscapeMinCheckZ) continue;
+    if (point.x * point.x + point.y * point.y + point.z * point.z <
+        minObstacleRange * minObstacleRange) {
+      continue;
+    }
+    if (pointToSegmentDistanceSq(point, start, end) < radiusSq) {
+      return false;
+    }
+  }
+  return true;
+}
+
+float escapeSegmentClearanceSq(const pcl::PointXYZ& start,
+                               const pcl::PointXYZ& end)
+{
+  float clearanceSq = 1000000.0;
+  for (const auto& point : plannerCloud->points) {
+    if (point.z < verticalEscapeMinCheckZ) continue;
+    if (point.x * point.x + point.y * point.y + point.z * point.z <
+        minObstacleRange * minObstacleRange) {
+      continue;
+    }
+    const float disSq = pointToSegmentDistanceSq(point, start, end);
+    if (disSq < clearanceSq) clearanceSq = disSq;
+  }
+  return clearanceSq;
+}
+
+void setEscapePath(nav_msgs::msg::Path& path,
+                   const std::vector<pcl::PointXYZ>& points,
+                   const double stamp)
+{
+  path.poses.resize(points.size());
+  for (std::size_t i = 0; i < points.size(); ++i) {
+    path.poses[i].pose.position.x = points[i].x;
+    path.poses[i].pose.position.y = points[i].y;
+    path.poses[i].pose.position.z = points[i].z;
+  }
+  path.header.stamp = timeFromSec(stamp);
+  path.header.frame_id = "track_point";
+}
+
+bool tryVerticalEscapePath(nav_msgs::msg::Path& path,
+                           const float relativeGoalX,
+                           const float relativeGoalY,
+                           const float relativeGoalDis,
+                           const bool forceEscape,
+                           const double stamp)
+{
+  if (!enableVerticalEscape || relativeGoalDis <= stopDis || plannerCloud->empty()) {
+    return false;
+  }
+
+  float dirX = 1.0;
+  float dirY = 0.0;
+  if (relativeGoalDis > 0.001) {
+    dirX = relativeGoalX / relativeGoalDis;
+    dirY = relativeGoalY / relativeGoalDis;
+  }
+
+  bool hasObstacle = false;
+  float obstacleTopZ = 0.0;
+  float repelX = 0.0;
+  float repelY = 0.0;
+  for (const auto& point : plannerCloud->points) {
+    if (point.z < verticalEscapeMinCheckZ) continue;
+    const float disSq = point.x * point.x + point.y * point.y;
+    if (disSq < minObstacleRange * minObstacleRange) continue;
+
+    const float forward = point.x * dirX + point.y * dirY;
+    const float lateral = fabs(-point.x * dirY + point.y * dirX);
+    if (forward > minObstacleRange && forward < verticalEscapeLookAhead &&
+        lateral < verticalEscapeCorridorWidth) {
+      hasObstacle = true;
+      if (point.z > obstacleTopZ) obstacleTopZ = point.z;
+    }
+
+    if (forceEscape && disSq < verticalEscapeInfluenceRadius * verticalEscapeInfluenceRadius) {
+      hasObstacle = true;
+      if (point.z > obstacleTopZ) obstacleTopZ = point.z;
+    }
+
+    if (disSq < verticalEscapeInfluenceRadius * verticalEscapeInfluenceRadius) {
+      const float weight = 1.0 / disSq;
+      repelX -= point.x * weight;
+      repelY -= point.y * weight;
+    }
+  }
+
+  if (!hasObstacle && !forceEscape) {
+    return false;
+  }
+
+  float targetZ = obstacleTopZ + verticalEscapeClearance;
+  if (targetZ < verticalEscapeFallbackStep && forceEscape) {
+    targetZ = verticalEscapeFallbackStep;
+  }
+  if (targetZ < verticalEscapeMinObstacleHeight && !forceEscape) {
+    return false;
+  }
+  if (targetZ > verticalEscapeMaxStep) targetZ = verticalEscapeMaxStep;
+  const float maxAllowedZ = maxElev - trackZ;
+  if (targetZ > maxAllowedZ) targetZ = maxAllowedZ;
+  if (targetZ <= 0.1) return false;
+
+  const pcl::PointXYZ origin(0.0, 0.0, 0.0);
+  const pcl::PointXYZ upPoint(0.0, 0.0, targetZ);
+  if (isEscapeSegmentClear(origin, upPoint, verticalEscapeRadius)) {
+    setEscapePath(path, {origin, upPoint}, stamp);
+    RCLCPP_WARN(nh->get_logger(), "localPlanner: vertical escape path selected, climb %.2fm.", targetZ);
+    return true;
+  }
+
+  float baseX = repelX;
+  float baseY = repelY;
+  float baseNorm = sqrt(baseX * baseX + baseY * baseY);
+  if (baseNorm < 0.001) {
+    baseX = -dirX;
+    baseY = -dirY;
+    baseNorm = 1.0;
+  }
+  baseX /= baseNorm;
+  baseY /= baseNorm;
+
+  float bestScore = -1.0;
+  pcl::PointXYZ bestLateralPoint;
+  pcl::PointXYZ bestLateralUpPoint;
+  const float angles[] = {0.0, 0.785398, -0.785398, 1.570796, -1.570796, 3.141593};
+  for (float lateralStep = verticalEscapeLateralStep;
+       lateralStep <= verticalEscapeMaxLateralStep + 0.001;
+       lateralStep += verticalEscapeLateralStep) {
+    for (const float angle : angles) {
+      const float cosA = cos(angle);
+      const float sinA = sin(angle);
+      const float candX = lateralStep * (baseX * cosA - baseY * sinA);
+      const float candY = lateralStep * (baseX * sinA + baseY * cosA);
+      const pcl::PointXYZ lateralPoint(candX, candY, 0.0);
+      const pcl::PointXYZ lateralUpPoint(candX, candY, targetZ);
+
+      if (isEscapeSegmentClear(origin, lateralPoint, verticalEscapeRadius) &&
+          isEscapeSegmentClear(lateralPoint, lateralUpPoint, verticalEscapeRadius)) {
+        setEscapePath(path, {origin, lateralPoint, lateralUpPoint}, stamp);
+        RCLCPP_WARN(nh->get_logger(),
+                    "localPlanner: lateral vertical escape path selected, shift %.2fm %.2fm then climb %.2fm.",
+                    candX, candY, targetZ);
+        return true;
+      }
+
+      if (forceEscape) {
+        const float lateralClearance = escapeSegmentClearanceSq(origin, lateralPoint);
+        const float climbClearance = escapeSegmentClearanceSq(lateralPoint, lateralUpPoint);
+        const float score = std::min(lateralClearance, climbClearance);
+        if (score > bestScore) {
+          bestScore = score;
+          bestLateralPoint = lateralPoint;
+          bestLateralUpPoint = lateralUpPoint;
+        }
+      }
+    }
+  }
+
+  if (forceEscape && bestScore > verticalEscapeRelaxedRadius * verticalEscapeRelaxedRadius) {
+    setEscapePath(path, {origin, bestLateralPoint, bestLateralUpPoint}, stamp);
+    RCLCPP_WARN(nh->get_logger(),
+                "localPlanner: relaxed lateral vertical escape path selected, shift %.2fm %.2fm then climb %.2fm, clearance %.2fm.",
+                bestLateralPoint.x, bestLateralPoint.y, targetZ, sqrt(bestScore));
+    return true;
+  }
+
+  return false;
+}
 
 void stateEstimationHandler(const nav_msgs::msg::Odometry::ConstSharedPtr& odom)
 {
@@ -561,6 +779,9 @@ void goalHandler(const geometry_msgs::msg::PointStamped::ConstSharedPtr& goal)
   goalZ = goal->point.z;
 
   if (goalZ > maxElev) goalZ = maxElev;
+
+  laserCloudKeep->clear();
+  laserCloudKeepDwz->clear();
 }
 
 void autoModeHandler(const std_msgs::msg::Float32::ConstSharedPtr& autoMode)
@@ -587,7 +808,7 @@ void clearSurrCloudHandler(const std_msgs::msg::Empty::ConstSharedPtr&)
 int main(int argc, char** argv)
 {
   rclcpp::init(argc, argv);
-  nh = rclcpp::Node::make_shared("localPlanner");  declareAndGet("pathFolder", pathFolder);  declareAndGet("stateEstimationTopic", stateEstimationTopic);  declareAndGet("autonomyMode", autonomyMode);  declareAndGet("depthCloudTopic", depthCloudTopic);  declareAndGet("depthCloudDelay", depthCloudDelay);  declareAndGet("depthCamPitchOffset", depthCamPitchOffset);  declareAndGet("depthCamXOffset", depthCamXOffset);  declareAndGet("depthCamYOffset", depthCamYOffset);  declareAndGet("depthCamZOffset", depthCamZOffset);  declareAndGet("trackingCamBackward", trackingCamBackward);  declareAndGet("trackingCamXOffset", trackingCamXOffset);  declareAndGet("trackingCamYOffset", trackingCamYOffset);  declareAndGet("trackingCamZOffset", trackingCamZOffset);  declareAndGet("trackingCamScale", trackingCamScale);  declareAndGet("scanVoxelSize", scanVoxelSize);  declareAndGet("pointPerPathThre", pointPerPathThre);  declareAndGet("maxRange", maxRange);  declareAndGet("maxElev", maxElev);  declareAndGet("minObstacleRange", minObstacleRange);  declareAndGet("keepSurrCloud", keepSurrCloud);  declareAndGet("keepHoriDis", keepHoriDis);  declareAndGet("keepVertDis", keepVertDis);  declareAndGet("lowerBoundZ", lowerBoundZ);  declareAndGet("upperBoundZ", upperBoundZ);  declareAndGet("pitchDiffLimit", pitchDiffLimit);  declareAndGet("pitchWeight", pitchWeight);  declareAndGet("sensorMaxPitch", sensorMaxPitch);  declareAndGet("sensorMaxYaw", sensorMaxYaw);  declareAndGet("yawDiffLimit", yawDiffLimit);  declareAndGet("yawWeight", yawWeight);  declareAndGet("pathScale", pathScale);  declareAndGet("minPathScale", minPathScale);  declareAndGet("pathScaleStep", pathScaleStep);  declareAndGet("pathScaleBySpeed", pathScaleBySpeed);  declareAndGet("stopDis", stopDis);  declareAndGet("shiftGoalAtStart", shiftGoalAtStart);  declareAndGet("goalX", goalX);  declareAndGet("goalY", goalY);  declareAndGet("goalZ", goalZ);  declareAndGet("sim_name", sim_name);  declareAndGet("sensor_name", sensor_name);
+  nh = rclcpp::Node::make_shared("localPlanner");  declareAndGet("pathFolder", pathFolder);  declareAndGet("stateEstimationTopic", stateEstimationTopic);  declareAndGet("autonomyMode", autonomyMode);  declareAndGet("depthCloudTopic", depthCloudTopic);  declareAndGet("depthCloudDelay", depthCloudDelay);  declareAndGet("depthCamPitchOffset", depthCamPitchOffset);  declareAndGet("depthCamXOffset", depthCamXOffset);  declareAndGet("depthCamYOffset", depthCamYOffset);  declareAndGet("depthCamZOffset", depthCamZOffset);  declareAndGet("trackingCamBackward", trackingCamBackward);  declareAndGet("trackingCamXOffset", trackingCamXOffset);  declareAndGet("trackingCamYOffset", trackingCamYOffset);  declareAndGet("trackingCamZOffset", trackingCamZOffset);  declareAndGet("trackingCamScale", trackingCamScale);  declareAndGet("scanVoxelSize", scanVoxelSize);  declareAndGet("pointPerPathThre", pointPerPathThre);  declareAndGet("maxRange", maxRange);  declareAndGet("maxElev", maxElev);  declareAndGet("minObstacleRange", minObstacleRange);  declareAndGet("keepSurrCloud", keepSurrCloud);  declareAndGet("keepHoriDis", keepHoriDis);  declareAndGet("keepVertDis", keepVertDis);  declareAndGet("lowerBoundZ", lowerBoundZ);  declareAndGet("upperBoundZ", upperBoundZ);  declareAndGet("pitchDiffLimit", pitchDiffLimit);  declareAndGet("pitchWeight", pitchWeight);  declareAndGet("sensorMaxPitch", sensorMaxPitch);  declareAndGet("sensorMaxYaw", sensorMaxYaw);  declareAndGet("yawDiffLimit", yawDiffLimit);  declareAndGet("yawWeight", yawWeight);  declareAndGet("pathScale", pathScale);  declareAndGet("minPathScale", minPathScale);  declareAndGet("pathScaleStep", pathScaleStep);  declareAndGet("pathScaleBySpeed", pathScaleBySpeed);  declareAndGet("stopDis", stopDis);  declareAndGet("shiftGoalAtStart", shiftGoalAtStart);  declareAndGet("goalX", goalX);  declareAndGet("goalY", goalY);  declareAndGet("goalZ", goalZ);  declareAndGet("sim_name", sim_name);  declareAndGet("sensor_name", sensor_name);  declareAndGet("enableVerticalEscape", enableVerticalEscape);  declareAndGet("verticalEscapeMinObstacleHeight", verticalEscapeMinObstacleHeight);  declareAndGet("verticalEscapeLookAhead", verticalEscapeLookAhead);  declareAndGet("verticalEscapeCorridorWidth", verticalEscapeCorridorWidth);  declareAndGet("verticalEscapeClearance", verticalEscapeClearance);  declareAndGet("verticalEscapeMaxStep", verticalEscapeMaxStep);  declareAndGet("verticalEscapeRadius", verticalEscapeRadius);  declareAndGet("verticalEscapeLateralStep", verticalEscapeLateralStep);  declareAndGet("verticalEscapeMaxLateralStep", verticalEscapeMaxLateralStep);  declareAndGet("verticalEscapeRelaxedRadius", verticalEscapeRelaxedRadius);  declareAndGet("verticalEscapeInfluenceRadius", verticalEscapeInfluenceRadius);  declareAndGet("verticalEscapeMinCheckZ", verticalEscapeMinCheckZ);  declareAndGet("verticalEscapeFailFrames", verticalEscapeFailFrames);  declareAndGet("verticalEscapeFallbackStep", verticalEscapeFallbackStep);
 
   if (goalZ > maxElev) goalZ = maxElev;
   if (autonomyMode) {
@@ -695,6 +916,34 @@ int main(int argc, char** argv)
         plannerCloud->points[i].z = pointX2 * sinTrackPitch + pointZ2 * cosTrackPitch;
       }
 
+      float goalX1 = (goalX - trackX) * cosTrackYaw + (goalY - trackY) * sinTrackYaw;
+      float goalY1 = -(goalX - trackX) * sinTrackYaw + (goalY - trackY) * cosTrackYaw;
+      float goalZ1 = goalZ - trackZ;
+
+      float relativeGoalX = (goalX1 * cosTrackPitch - goalZ1 * sinTrackPitch);
+      float relativeGoalY = goalY1;
+      float relativeGoalZ = (goalX1 * sinTrackPitch + goalZ1 * cosTrackPitch);
+
+      float relativeGoalDis = sqrt(relativeGoalX * relativeGoalX + relativeGoalY * relativeGoalY);
+      float relativeGoalPitch = -atan2(relativeGoalZ, sqrt(relativeGoalX * relativeGoalX
+                            + relativeGoalY * relativeGoalY)) * 180.0 / PI;
+      float relativeGoalYaw = atan2(relativeGoalY, relativeGoalX) * 180.0 / PI;
+
+      if (relativeGoalPitch < -pitchDiffLimit) relativeGoalPitch = -pitchDiffLimit;
+      else if (relativeGoalPitch > pitchDiffLimit) relativeGoalPitch = pitchDiffLimit;
+      if (relativeGoalYaw < -yawDiffLimit) relativeGoalYaw = -yawDiffLimit;
+      else if (relativeGoalYaw > yawDiffLimit) relativeGoalYaw = yawDiffLimit;
+
+      if (manualMode || (autonomyMode && autoAdjustMode)) {
+        relativeGoalDis = 1000.0;
+        relativeGoalPitch = 0;
+        relativeGoalYaw = 0;
+      } else if (!autonomyMode) {
+        relativeGoalDis = 1000.0;
+        relativeGoalPitch = -joyUp;
+        relativeGoalYaw = joyLeft;
+      }
+
       bool pathPublished = false;
       float pathScaleOri = pathScale;
       if (manualMode || (autonomyMode && autoAdjustMode)) pathScale = minPathScale;
@@ -707,34 +956,6 @@ int main(int argc, char** argv)
         }
         for (int i = 0; i < groupNum; i++) {
           clearPathPerGroupScore[i] = 0;
-        }
-
-        float goalX1 = (goalX - trackX) * cosTrackYaw + (goalY - trackY) * sinTrackYaw;
-        float goalY1 = -(goalX - trackX) * sinTrackYaw + (goalY - trackY) * cosTrackYaw;
-        float goalZ1 = goalZ - trackZ;
-
-        float relativeGoalX = (goalX1 * cosTrackPitch - goalZ1 * sinTrackPitch);
-        float relativeGoalY = goalY1;
-        float relativeGoalZ = (goalX1 * sinTrackPitch + goalZ1 * cosTrackPitch);
-
-        float relativeGoalDis = sqrt(relativeGoalX * relativeGoalX + relativeGoalY * relativeGoalY);
-        float relativeGoalPitch = -atan2(relativeGoalZ, sqrt(relativeGoalX * relativeGoalX 
-                              + relativeGoalY * relativeGoalY)) * 180.0 / PI;
-        float relativeGoalYaw = atan2(relativeGoalY, relativeGoalX) * 180.0 / PI;
-
-        if (relativeGoalPitch < -pitchDiffLimit) relativeGoalPitch = -pitchDiffLimit;
-        else if (relativeGoalPitch > pitchDiffLimit) relativeGoalPitch = pitchDiffLimit;
-        if (relativeGoalYaw < -yawDiffLimit) relativeGoalYaw = -yawDiffLimit;
-        else if (relativeGoalYaw > yawDiffLimit) relativeGoalYaw = yawDiffLimit;
-
-        if (manualMode || (autonomyMode && autoAdjustMode)) {
-          relativeGoalDis = 1000.0;
-          relativeGoalPitch = 0;
-          relativeGoalYaw = 0;
-        } else if (!autonomyMode) {
-          relativeGoalDis = 1000.0;
-          relativeGoalPitch = -joyUp;
-          relativeGoalYaw = joyLeft;
         }
 
         for (int i = 0; i < plannerCloudSize; i++) {
@@ -863,6 +1084,21 @@ int main(int argc, char** argv)
       }
       pathScale = pathScaleOri;
 
+      if (pathPublished && path.poses.size() <= 1) {
+        pathPublished = false;
+      }
+
+      bool verticalEscapePublished = false;
+      if (!pathPublished) {
+        ++failedPathCount;
+        const bool forceEscape = failedPathCount >= verticalEscapeFailFrames;
+        verticalEscapePublished = tryVerticalEscapePath(path, relativeGoalX, relativeGoalY,
+                                                       relativeGoalDis, forceEscape, laserTime);
+        pathPublished = verticalEscapePublished;
+      } else {
+        failedPathCount = 0;
+      }
+
       if (!pathPublished) {
         path.poses.resize(1);
         path.poses[0].pose.position.x = 0;
@@ -871,6 +1107,9 @@ int main(int argc, char** argv)
 
         path.header.stamp = timeFromSec(laserTime);
         path.header.frame_id = "track_point";
+      }
+
+      if (!pathPublished) {
         pubPath->publish(path);
 
         #if PLOTPATHSET == 1
@@ -881,6 +1120,8 @@ int main(int argc, char** argv)
         freePaths2.header.frame_id = "track_point";
         pubFreePaths->publish(freePaths2);
         #endif
+      } else if (verticalEscapePublished) {
+        pubPath->publish(path);
       }
     }
 

@@ -55,6 +55,20 @@
     <param name="minPathScale" type="float" value="1.0" />
     <param name="pathScaleStep" type="float" value="0.5" />
     <param name="pathScaleBySpeed" type="bool" value="true" />
+    <param name="enableVerticalEscape" type="bool" value="true" />
+    <param name="verticalEscapeMinObstacleHeight" type="float" value="0.6" />
+    <param name="verticalEscapeLookAhead" type="float" value="5.0" />
+    <param name="verticalEscapeCorridorWidth" type="float" value="1.5" />
+    <param name="verticalEscapeClearance" type="float" value="0.6" />
+  <param name="verticalEscapeMaxStep" type="float" value="2.0" />
+  <param name="verticalEscapeRadius" type="float" value="0.8" />
+  <param name="verticalEscapeLateralStep" type="float" value="1.0" />
+  <param name="verticalEscapeMaxLateralStep" type="float" value="3.0" />
+  <param name="verticalEscapeRelaxedRadius" type="float" value="0.35" />
+  <param name="verticalEscapeInfluenceRadius" type="float" value="2.0" />
+  <param name="verticalEscapeMinCheckZ" type="float" value="-0.3" />
+  <param name="verticalEscapeFailFrames" type="int" value="8" />
+    <param name="verticalEscapeFallbackStep" type="float" value="1.0" />
     <param name="stopDis" value="$(var stopDis)" />
     <param name="shiftGoalAtStart" value="$(var shiftGoalAtStart)" />
     <param name="goalX" value="$(var goalX)" />

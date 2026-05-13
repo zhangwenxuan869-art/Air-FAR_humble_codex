@@ -49,9 +49,13 @@ NodePtrStack current_graph_;
 bool is_free_nav_goal_;
 // momentum planning values
 PointStack recorded_path_;
+NodePtrStack recorded_path_ptr_;
 Point3D next_waypoint_;
 int path_momentum_counter_;
 bool is_global_path_init_;
+int skip_path_momentum_count_ = 0;
+std::deque<std::size_t> escape_blocked_node_queue_;
+std::unordered_set<std::size_t> escape_blocked_node_ids_;
 float last_waypoint_dist_;
 Point3D last_planning_odom_;
 DPVisualizer gp_viz_;
@@ -96,12 +100,13 @@ inline void InitNodesStates(const NodePtrStack& graph) {
     }
 }
 
-inline void RecordPathInfo(const PointStack& global_path) {
+inline void RecordPathInfo(const PointStack& global_path, const NodePtrStack& global_path_ptr) {
     if (global_path.size() < 2) {
         ROS_ERROR("GP: recording path for momontum fails, planning path is empty");
         return;
     }
     recorded_path_ = global_path;
+    recorded_path_ptr_ = global_path_ptr;
     next_waypoint_ = global_path[1];
     last_waypoint_dist_ = (odom_node_ptr_->position - next_waypoint_).norm();
     is_global_path_init_ = true;
@@ -209,11 +214,80 @@ inline void ResetPlannerInternalValues() {
     
     current_graph_.clear(); 
     recorded_path_.clear();
+    recorded_path_ptr_.clear();
+    escape_blocked_node_queue_.clear();
+    escape_blocked_node_ids_.clear();
     path_momentum_counter_ = 0;
     last_waypoint_dist_    = 0.0;
     origin_goal_pos_    = Point3D(0,0,0);
     next_waypoint_      = Point3D(0,0,0);
     last_planning_odom_ = Point3D(0,0,0);
+}
+
+inline void ResetPathMomentum() {
+    recorded_path_.clear();
+    recorded_path_ptr_.clear();
+    next_waypoint_ = Point3D(0,0,0);
+    last_waypoint_dist_ = 0.0;
+    last_planning_odom_ = Point3D(0,0,0);
+    path_momentum_counter_ = gp_params_.momentum_thred;
+    is_global_path_init_ = false;
+    skip_path_momentum_count_ = 2;
+}
+
+inline bool HasGoal() const {
+    return is_goal_init_;
+}
+
+inline float DistanceToOriginGoal(const Point3D& point) const {
+    if (!is_goal_init_) return DPUtil::kINF;
+    return (origin_goal_pos_ - point).norm();
+}
+
+inline bool BlockCurrentFirstHopForEscape() {
+    if (recorded_path_ptr_.size() < 2) return false;
+    const NavNodePtr blocked_ptr = recorded_path_ptr_[1];
+    if (blocked_ptr == NULL || blocked_ptr == goal_node_ptr_ || blocked_ptr->is_goal) {
+        return false;
+    }
+    if (!escape_blocked_node_ids_.insert(blocked_ptr->id).second) {
+        return true;
+    }
+    escape_blocked_node_queue_.push_back(blocked_ptr->id);
+    const std::size_t max_escape_blocks = 8;
+    while (escape_blocked_node_queue_.size() > max_escape_blocks) {
+        escape_blocked_node_ids_.erase(escape_blocked_node_queue_.front());
+        escape_blocked_node_queue_.pop_front();
+    }
+    return true;
+}
+
+inline bool BlockNonAscendingOdomNeighborsForEscape() {
+    if (odom_node_ptr_ == NULL) return false;
+    bool blocked_any = false;
+    const float layer_resolution = DPUtil::kTolerZ / (DPUtil::kNeighborLayers + 0.5f);
+    const float min_escape_z_gain = std::max(0.3f, 0.5f * layer_resolution);
+    for (const auto& node_ptr : odom_node_ptr_->connect_nodes) {
+        if (node_ptr == NULL || node_ptr == goal_node_ptr_ || node_ptr->is_goal) continue;
+        if (node_ptr->position.z > odom_node_ptr_->position.z + min_escape_z_gain) continue;
+        if (!escape_blocked_node_ids_.insert(node_ptr->id).second) {
+            blocked_any = true;
+            continue;
+        }
+        escape_blocked_node_queue_.push_back(node_ptr->id);
+        blocked_any = true;
+    }
+    const std::size_t max_escape_blocks = 16;
+    while (escape_blocked_node_queue_.size() > max_escape_blocks) {
+        escape_blocked_node_ids_.erase(escape_blocked_node_queue_.front());
+        escape_blocked_node_queue_.pop_front();
+    }
+    return blocked_any;
+}
+
+inline void ClearEscapeBlockedNodes() {
+    escape_blocked_node_queue_.clear();
+    escape_blocked_node_ids_.clear();
 }
 
 const NodePtrStack& GetNavGraph() const { return global_graph_;};
