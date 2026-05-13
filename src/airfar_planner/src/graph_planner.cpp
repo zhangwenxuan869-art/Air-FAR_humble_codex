@@ -62,6 +62,7 @@ void GraphPlanner::UpdateGraphTraverability(const NavNodePtr& odom_node_ptr)
         // std::cout<<"current connect_nodes size: "<<current->connect_nodes.size()<<std::endl;
         for (const auto& neighbor : current->connect_nodes) {
             if (close_set.count(neighbor)) continue;
+            if (neighbor != goal_node_ptr_ && escape_blocked_node_ids_.count(neighbor->id)) continue;
             // if (current->is_inserted) ROS_ERROR("GP: inserted node in open set");
             const float temp_gscore = current->gscore + this->EulerCost(current, neighbor);
             if (temp_gscore < neighbor->gscore) {
@@ -95,6 +96,7 @@ void GraphPlanner::UpdateGraphTraverability(const NavNodePtr& odom_node_ptr)
         current->is_free_traversable = true; // reachable from current position
         for (const auto& neighbor : current->connect_nodes) {
             if (neighbor->is_frontier || close_set.count(neighbor)) continue;
+            if (neighbor != goal_node_ptr_ && escape_blocked_node_ids_.count(neighbor->id)) continue;
             const float e_dist = this->EulerCost(current, neighbor);
             if (neighbor == goal_node_ptr_ && e_dist > DPUtil::kSensorRange) continue; // To goal distance should less than sensor range
             const float temp_fgscore = current->fgscore + e_dist;
@@ -184,6 +186,10 @@ bool GraphPlanner::NextGoalPlanning(PointStack& global_path,
     _is_fails = false;
     global_path.clear();
     global_path_ptr.clear();
+    const bool skip_path_momentum = skip_path_momentum_count_ > 0;
+    if (skip_path_momentum_count_ > 0) {
+        --skip_path_momentum_count_;
+    }
     
     // _goal_p = goal_node_ptr_->position;
     _goal_p = origin_goal_pos_;
@@ -231,7 +237,7 @@ bool GraphPlanner::NextGoalPlanning(PointStack& global_path,
     }   
     _is_free_nav = is_free_nav_goal_;
     const NavNodePtr reach_nav_node = is_free_nav_goal_ ? goal_node_ptr_->free_parent : goal_node_ptr_->parent;
-    if (is_global_path_init_ && last_waypoint_dist_ > gp_params_.adjust_radius && reach_nav_node != NULL && reach_nav_node != odom_node_ptr_) {
+    if (!skip_path_momentum && is_global_path_init_ && last_waypoint_dist_ > gp_params_.adjust_radius && reach_nav_node != NULL && reach_nav_node != odom_node_ptr_) {
         // momentum planning if movement towards to current waypoints is less than threshold
         const float cur_waypoint_dist = (odom_node_ptr_->position - next_waypoint_).norm();
         if (cur_waypoint_dist > gp_params_.converge_dist && (abs((odom_node_ptr_->position - last_planning_odom_).norm() < gp_params_.momentum_dist) 
@@ -246,7 +252,7 @@ bool GraphPlanner::NextGoalPlanning(PointStack& global_path,
     }
     if (reach_nav_node == NULL) {
         // no reachable goal found
-        if (is_global_path_init_ && path_momentum_counter_ < gp_params_.momentum_thred) {
+        if (!skip_path_momentum && is_global_path_init_ && path_momentum_counter_ < gp_params_.momentum_thred) {
             ROS_WARN("GP: no reachable nav node found, path momentum planning...");
             global_path = recorded_path_;
             _nav_goal = this->NextNavWaypointFromPath(global_path);
@@ -266,13 +272,10 @@ bool GraphPlanner::NextGoalPlanning(PointStack& global_path,
                 is_free_nav_goal_ = false;
                 return true;
             }
-            ROS_WARN("GP: no reachable nav node found, attempting direct goal navigation.");
-            global_path.push_back(odom_node_ptr_->position);
-            global_path.push_back(_goal_p);
-            global_path_ptr.push_back(odom_node_ptr_);
-            global_path_ptr.push_back(goal_node_ptr_);
-            _nav_goal = _goal_p;
-            return true;
+            ROS_ERROR("****************** FAIL TO REACH GOAL ******************");
+            this->GoalReset();
+            is_goal_init_ = false, _is_fails = true;
+            return false;
         }
     }
     if (this->ReconstructPath(goal_node_ptr_, is_free_nav_goal_, global_path, global_path_ptr)) {
@@ -288,16 +291,12 @@ bool GraphPlanner::NextGoalPlanning(PointStack& global_path,
             // ROS_WARN("GP: global path is already divided, global path size: %d", global_path_ptr.size());
         }
         _nav_goal = this->NextNavWaypointFromPath(global_path);
-        this->RecordPathInfo(global_path);
+        this->RecordPathInfo(global_path, global_path_ptr);
         return true;
     }
-    ROS_WARN("GP: reconstruct path failed, attempting direct goal navigation.");
-    global_path.push_back(odom_node_ptr_->position);
-    global_path.push_back(_goal_p);
-    global_path_ptr.push_back(odom_node_ptr_);
-    global_path_ptr.push_back(goal_node_ptr_);
-    _nav_goal = _goal_p;
-    return true;
+    this->GoalReset();
+    is_goal_init_ = false, _is_fails = true;
+    return false;
 }
 
 bool GraphPlanner::ReconstructPath(const NavNodePtr& goal_node_ptr,
@@ -420,6 +419,9 @@ void GraphPlanner::UpdateGoal(const Point3D& goal, const int& layer_id, const bo
     last_waypoint_dist_ = 0.0;
     last_planning_odom_ = Point3D(0,0,0);
     recorded_path_.clear();
+    recorded_path_ptr_.clear();
+    escape_blocked_node_queue_.clear();
+    escape_blocked_node_ids_.clear();
     path_momentum_counter_ = 0;
     reached_goal_msg_.data = false;
     DPUtil::Timer.start_time("Overall_executing", true);

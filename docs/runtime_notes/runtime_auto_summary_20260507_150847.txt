@@ -1,0 +1,2 @@
+vehicle_simulator startup failed or timed out.
+vehicle log: /home/wenxuan/Air-FAR_humble_codex/docs/runtime_notes/vehicle_simulator_auto_20260507_150847.log

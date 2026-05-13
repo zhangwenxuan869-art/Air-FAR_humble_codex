@@ -1,0 +1,37 @@
+pkill -TERM -f 'ros2 launch airfar_planner|gzserver|gzclient|rviz2|
+spawn_entity|localPlanner|pathFollower|terrainAnalysis|terrainAnalysisExt|
+vehicleSimulator|airfar_planner|graph_decoder|robot_state_publisher|
+static_transform_publisher' || true
+  sleep 1
+  pkill -KILL -f 'gzserver|gzclient|rviz2|spawn_entity' || true
+
+  然后用这一整行启动：
+
+  cd /home/wenxuan/Air-FAR_humble_codex
+  source /opt/ros/humble/setup.bash
+  source install/setup.bash
+ ros2 launch airfar_planner airfar_sim_env.launch.py \
+    map_name:=campus \
+    gazebo_gui:=true \
+    use_sim_rviz:=true \
+    vehicleZ:=1.5
+
+  
+
+  
+
+  第二个终端再开 Air-FAR：
+
+  cd /home/wenxuan/Air-FAR_humble_codex
+  source /opt/ros/humble/setup.bash
+  source install/setup.bash
+  ros2 launch airfar_planner airfar_nav_viz.launch.py \
+  config:=outdoor\
+  use_graph_decoder:=true\
+  rviz_file:=airfar_planner
+
+
+无人机进行跨越大型障碍物的情景时无法从开始就进行飞跃障碍物的规划而是邻近时才开始向上飞。而且可能会碰撞
+
+
+

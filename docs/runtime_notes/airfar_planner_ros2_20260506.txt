@@ -1,0 +1,78 @@
+终端 1：启动仿真环境，使用下载的 ROS1 示例 Gazebo 模型和 office.world
+
+cd /home/wenxuan/Air-FAR_humble_codex
+source /opt/ros/humble/setup.bash
+source /home/wenxuan/far_planner/install/setup.bash
+
+export ROS_LOG_DIR=/tmp/airfar_ros_logs
+export GAZEBO_MODEL_PATH=/home/wenxuan/Air-FAR_humble_codex/external/aerial_autonomy_development_environment/src/vehicle_simulator/mesh:$GAZEBO_MODEL_PATH
+
+ros2 launch vehicle_simulator system_indoor.launch \
+  world:=/home/wenxuan/Air-FAR_humble_codex/external/aerial_autonomy_development_environment/src/vehicle_simulator/world/office.world \
+  world_name:=office \
+  vehicleHeight:=1.5 \
+  gazebo_gui:=true
+
+终端 2：启动 Air-FAR 和 RViz
+
+cd /home/wenxuan/Air-FAR_humble_codex
+source /opt/ros/humble/setup.bash
+source /home/wenxuan/far_planner/install/setup.bash
+source install/setup.bash
+export ROS_LOG_DIR=/tmp/airfar_ros_logs
+
+ros2 launch airfar_planner airfar.launch.py use_rviz:=true
+
+终端 3：发送一个测试目标点
+
+cd /home/wenxuan/Air-FAR_humble_codex
+source /opt/ros/humble/setup.bash
+source /home/wenxuan/far_planner/install/setup.bash
+source install/setup.bash
+export ROS_LOG_DIR=/tmp/airfar_ros_logs
+
+ros2 topic pub --once /goal geometry_msgs/msg/PointStamped \
+  "{header: {frame_id: map}, point: {x: 8.0, y: 0.0, z: 1.0}}"
+
+原问题：
+1. image 没有图像。
+2. Gazebo 没有启动，RViz 中没有障碍物显示，也不会构图。
+
+原因：
+1. 原命令把 GAZEBO_MODEL_PATH 和 office.world 路径拆成了多行，复制执行后路径无效。
+2. office.world 和 office 模型资产位于本仓库 external/aerial_autonomy_development_environment 下，不在 far_planner 安装包默认 world/model 路径中，需要显式设置 GAZEBO_MODEL_PATH 并传入绝对 world 路径。
+3. RViz 显示配置需要订阅 ROS2 仿真实际发布的话题，例如 /registered_scan 和 /terrain_map_ext。
+4. office.world 中家具密集，默认 vehicleHeight:=0.75 会让无人机处在接近家具高度的位置，局部规划器容易判定候选路径全部被障碍物阻塞。vehicleSimulator 每个循环会用 terrainZ + vehicleHeight 覆盖 vehicleZ，因此这里应设置 vehicleHeight:=1.5，让无人机从更合理的室内飞行高度开始。
+
+2026-05-06 排查记录：
+
+已完成改进：
+1. 修正本文档中的启动命令，补全 GAZEBO_MODEL_PATH、office.world 绝对路径和 gazebo_gui:=true。
+2. 修正 Air-FAR RViz 配置，把点云显示改到实际 ROS2 话题 /registered_scan 和 /terrain_map_ext，并设置为 Best Effort QoS。
+3. 修正 vehicle_simulator RViz 中 /camera/image_raw 的 QoS，使 image 面板能显示图像。
+4. 修正 vehicle_simulator system_indoor.launch 和 vehicle_simulator.launch，使 world 参数能真正传到 Gazebo，并把 vehicleHeight 从 system_indoor 传到 vehicle_simulator。
+5. 修正 visualization_tools 的日志文件路径和空文件指针问题，避免缺少 metrics/traj 输出目录时直接崩溃。
+6. 在 localPlanner 中加入无路径诊断日志，便于观察 goal、vehicle pose、joySpeed、checkObstacle、plannerCloud、maxScore 等关键状态。
+7. 将 local_planner.launch 临时调整为 useTerrainAnalysis=false、checkObstacle=false，用于验证是否由局部障碍过滤导致不运动。
+
+已经验证：
+1. Gazebo GUI 可以启动，日志中有 gzclient 进程。
+2. /camera/image_raw 正常发布，image 有图像。
+3. /registered_scan 和 /terrain_map_ext 都是非空点云，RViz 能显示地图和障碍物。
+4. Air-FAR 能构图，/request_nav_graph 返回 Global graph has been shared。
+5. /goal 能被 Air-FAR 接收，日志出现 GP: new goal updated。
+6. /way_point、/path、/cmd_vel 链路存在，但当前 /path 仍只有一个原点，/cmd_vel 仍为 0，因此无人机不会运动。
+
+当前剩余问题：
+1. localPlanner 仍然没有生成有效局部路径。诊断日志显示 maxScore=0、selectedGroupID=-1，即候选路径评分阶段没有任何可选路径。
+2. 即使直接向 /way_point 发送近目标，并把 local_planner.launch 改为 useTerrainAnalysis=false、checkObstacle=false，/path 仍只有原点。这说明问题不再是 Gazebo、图像、点云或 Air-FAR 未接收目标，而是 localPlanner 路径库/评分逻辑与当前 office 场景、坐标系或路径参数之间不匹配。
+3. office preview pointcloud.ply 缺失，visualizationTools 会提示无法读取 /mesh/office/preview/pointcloud.ply。这影响 /overall_map 预览，不影响实时点云和 Air-FAR 构图。
+4. Gazebo 的 spawn_entity.py 在 office 重场景中偶尔会报 timeout，但实体和传感器插件仍可能已经加载并发布话题。
+5. Ctrl-C 关闭时多个 FAR 节点会抛 rclcpp::RCLError，sensorScanGeneration 有时需要 SIGKILL。这是关闭流程问题，不是图像/地图链路问题。
+
+下一步建议：
+1. 优先单独调试 local_planner，不启动 Air-FAR：启动 vehicle_simulator 后直接发 /way_point，观察 localPlanner 的 No local path 诊断日志。
+2. 在 localPlanner.cpp 的评分循环中继续加更细日志，统计方向过滤后保留了多少候选路径、clearPathList < pointPerPathThre 的数量、score > 0 的数量，用来定位 maxScore 为什么恒为 0。
+3. 检查 local_planner/paths 下的路径库是否适配当前无人机飞行高度和 office 场景；必要时重新生成路径库或换一个更空旷的世界先验证运动链路。
+4. 如果目标是先跑通无人机运动，可临时增加一个 bypass 模式：当 localPlanner 无路径时，把 /way_point 直接转为一条简单短距离 /path，用于验证 pathFollower 和 vehicleSimulator 运动链路。
+5. 后续再把 localPlanner 的诊断代码改成参数开关，避免长期刷日志。

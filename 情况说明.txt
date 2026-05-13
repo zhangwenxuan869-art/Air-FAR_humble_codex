@@ -1,0 +1,109 @@
+1. 为什么现在恢复两个终端
+
+已经恢复为接近原始 Bottle101/Air-FAR 的两段式启动方式。终端 1 只负责仿真环境和局部控制闭环，终端 2 只负责 Air-FAR planner、graph_decoder 和 Air-FAR RViz。这样不会再让 airfar_full_sim.launch.py 把 Gazebo、控制、planner、RViz 全部混在一个 one-shot launch 里，调试结构图、点云、localPlanner 和 pathFollower 时也更清楚。
+
+2. 哪个终端负责结构图更新
+
+终端 2 负责结构图可视化。airfar_nav_viz.launch.py 启动 airfar_planner，并打开 rviz/airfar_graph_debug.rviz。这个 RViz 配置订阅 Air-FAR 原生动态 marker topic：
+
+- /viz_graph_topic
+- /viz_node_topic
+- /viz_contour_topic
+- /viz_grid_map_topic
+- /viz_path_topic
+- /graph_decoder_viz
+
+3. 是否已启动 graph_decoder
+
+airfar_nav_viz.launch.py 默认 use_graph_decoder:=true。如果 graph_decoder 包和 graph_decoder/launch/decoder.launch 存在，就会 include 它；如果不存在，会在 launch 输出中明确提示 /graph_decoder_viz 不会更新。
+
+当前仓库中存在：
+
+- src/vendor/autonomous_exploration_development_environment/src/graph_decoder
+- src/vendor/autonomous_exploration_development_environment/src/graph_decoder/launch/decoder.launch
+
+注意：当前 ROS2 graph_decoder 订阅 visibility_graph_msg/Graph 的 /robot_vgraph，并发布 /graph_decoder_viz；Air-FAR ROS2 自身提供 /request_nav_graph，并在服务被调用时发布 nav_graph_msg/Graph 到 /planner_nav_graph。这两个 graph message 类型目前不一致，所以 Air-FAR RViz 的实时结构图主要依赖 /viz_graph_topic 等 Air-FAR 原生 marker topic。后续如需 graph_decoder 完整复刻 ROS1 保存/解码链路，需要迁移 graph_decoder 以支持 nav_graph_msg，或加一个 nav_graph_msg -> visibility_graph_msg 的桥。
+
+4. campus 场景是否真实存在
+
+ROS2 launch/world 文件真实存在：
+
+- vehicle_simulator/launch/system_campus.launch
+- vehicle_simulator/world/campus.world
+
+但是当前本仓库 vendored vehicle_simulator/mesh 只有 indoor，缺少 campus.world 依赖的 model://campus/meshes/campus.dae。/home/wenxuan/far_planner/install/vehicle_simulator/share/vehicle_simulator/mesh/campus 存在 campus mesh。因此 campus 现在可以作为默认 world_profile，但如果当前 workspace 没有完整 vendor campus mesh，需要临时 source /home/wenxuan/far_planner/install/setup.bash 或把 mesh/campus 迁移进本仓库。
+
+5. UAV 模型是否真实存在
+
+当前 ROS2 vehicle_simulator 中没有找到 drone/uav/quadrotor/multirotor/aerial/x500/iris/px4 等 UAV 模型或模型选择参数。vehicle_simulator/urdf/robot.sdf 是带车轮视觉几何的默认地面车模型。
+
+airfar_sim_env.launch.py 已新增 model_profile:=uav，默认值也是 uav，但这个参数目前只表达目标模型 profile，并会打印提示说明当前仍使用 vehicle_simulator 默认 robot.sdf，避免假装已经切换成无人机。
+
+6. 如果没有 UAV 模型，下一步迁移方案是什么
+
+见 docs/UAV_MODEL_MIGRATION_PLAN.md。核心步骤是：
+
+- 迁移或接入 UAV SDF/URDF/Xacro 模型、传感器和 TF。
+- 迁移 campus mesh/world 资源。
+- 替换或扩展 vehicleSimulator 当前的 2D/贴地状态更新逻辑，因为它会把 vehicleZ 设为 terrainZ + vehicleHeight。
+- 接入深度相机或 lidar 点云到 /registered_scan、/terrain_map、/terrain_map_ext。
+- 可选路线是接入 PX4 Gazebo x500 depth 类模型，把 Air-FAR/localPlanner 输出桥接到 PX4 控制接口。
+
+模型现在还是车，不代表 Air-FAR planner 算法不是 aerial planner；只是当前 ROS2 仿真载体仍是 vehicle_simulator 默认模型。
+
+7. 穿墙问题的可能原因和验证命令
+
+可能原因：
+
+- Gazebo 物理碰撞和算法避障不是同一个问题。
+- 当前 vehicleSimulator 通过 /set_entity_state 移动 Gazebo 实体，可能绕过正常物理碰撞响应。
+- campus mesh 缺失或 world collision 没正确加载。
+- /registered_scan、/terrain_map、/terrain_map_ext 为空或 remap 错误。
+- localPlanner 的 checkObstacle 或 useTerrainAnalysis 没有启用。
+- /path 仍是直线或空路径，/cmd_vel 仍来自 pathFollower 但没有绕障。
+
+验证命令：
+
+bash scripts/debug_obstacle_avoidance_runtime.sh
+
+也可以手动检查：
+
+ros2 topic echo --once /registered_scan --field width
+ros2 topic echo --once /terrain_map --field width
+ros2 topic echo --once /terrain_map_ext --field width
+ros2 topic echo --once /path
+ros2 topic echo --once /cmd_vel
+ros2 param get /localPlanner checkObstacle
+ros2 param get /localPlanner useTerrainAnalysis
+ros2 service list | grep -E 'request_nav_graph|request_graph_service'
+
+8. 修改了哪些文件
+
+- README.md
+- src/airfar_planner/launch/airfar_sim_env.launch.py
+- src/airfar_planner/launch/airfar_nav_viz.launch.py
+- src/airfar_planner/rviz/airfar_graph_debug.rviz
+- scripts/debug_obstacle_avoidance_runtime.sh
+- docs/UAV_MODEL_MIGRATION_PLAN.md
+- docs/COLLISION_AND_OBSTACLE_DIAGNOSIS.md
+- 情况说明.txt
+
+保留 airfar_full_sim.launch.py，README 中已标注它是 experimental one-shot launch，不再作为默认推荐演示方式。
+
+9. 推荐的两个终端启动命令
+
+终端 1：
+
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+# 如果 campus mesh 还依赖外部 workspace，临时追加：
+source /home/wenxuan/far_planner/install/setup.bash
+ros2 launch airfar_planner airfar_sim_env.launch.py world_profile:=campus model_profile:=uav gazebo_gui:=true use_sim_rviz:=false
+
+终端 2：
+
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+# 如果 graph_decoder 或仿真依赖还从外部 workspace 解析，临时追加：
+source /home/wenxuan/far_planner/install/setup.bash
+ros2 launch airfar_planner airfar_nav_viz.launch.py remap_profile:=far_ros2 use_rviz:=true use_graph_decoder:=true config:=outdoor
